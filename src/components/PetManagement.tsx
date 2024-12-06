@@ -1,16 +1,17 @@
+import { useState } from "react";
 import {
   flexRender,
   getCoreRowModel,
-  getFilteredRowModel,
+  useReactTable,
   getPaginationRowModel,
   getSortedRowModel,
-  useReactTable,
+  getFilteredRowModel,
 } from "@tanstack/react-table";
-import { ArrowUpDown, MessageCircle, MoreHorizontal } from "lucide-react";
-import { useState } from "react";
+import { ArrowUpDown, MoreHorizontal, MessageCircle } from 'lucide-react';
+import { Link } from "react-router-dom";
 
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "./ui/button";
+import { Checkbox } from "./ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,8 +19,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
+} from "./ui/dropdown-menu";
+import { Input } from "./ui/input";
 import {
   Table,
   TableBody,
@@ -27,7 +28,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "./ui/table";
 
 const data = [
   {
@@ -73,7 +74,6 @@ export function PetManagement() {
   const [columnFilters, setColumnFilters] = useState([]);
   const [columnVisibility, setColumnVisibility] = useState({});
   const [rowSelection, setRowSelection] = useState({});
-  const [selectedPet, setSelectedPet] = useState(null);
 
   const columns = [
     {
@@ -98,16 +98,12 @@ export function PetManagement() {
     {
       accessorKey: "name",
       header: "Name",
-      cell: ({ row }) => (
-        <div className="capitalize">{row.getValue("name")}</div>
-      ),
+      cell: ({ row }) => <div className="capitalize">{row.getValue("name")}</div>,
     },
     {
       accessorKey: "species",
       header: "Species",
-      cell: ({ row }) => (
-        <div className="capitalize">{row.getValue("species")}</div>
-      ),
+      cell: ({ row }) => <div className="capitalize">{row.getValue("species")}</div>,
     },
     {
       accessorKey: "age",
@@ -133,13 +129,7 @@ export function PetManagement() {
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => (
-        <div
-          className={`capitalize ${
-            row.getValue("status") === "Active"
-              ? "text-green-600"
-              : "text-red-600"
-          }`}
-        >
+        <div className={`capitalize ${row.getValue("status") === "Active" ? "text-green-600" : "text-red-600"}`}>
           {row.getValue("status")}
         </div>
       ),
@@ -158,12 +148,12 @@ export function PetManagement() {
       id: "chat",
       cell: ({ row }) => {
         return (
-          <a href={`/dashboard/pets/${row.original.id}`}>
+          <Link to={`/dashboard/pets/${row.original.id}`}>
             <Button variant="ghost" className="h-8 w-8 p-0">
               <span className="sr-only">Open chat</span>
               <MessageCircle className="h-4 w-4" />
             </Button>
-          </a>
+          </Link>
         );
       },
     },
@@ -259,20 +249,14 @@ export function PetManagement() {
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
+                <TableCell colSpan={columns.length} className="h-24 text-center">
                   No results.
                 </TableCell>
               </TableRow>
@@ -307,3 +291,4 @@ export function PetManagement() {
     </div>
   );
 }
+

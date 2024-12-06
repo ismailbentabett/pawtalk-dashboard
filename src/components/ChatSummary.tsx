@@ -1,5 +1,5 @@
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "./ui/scroll-area";
+import { Badge } from "./ui/badge";
 
 const chatSummary = [
   { id: 1, pet: "Buddy", lastMessage: "Appointment confirmed for next week", unread: 2 },
@@ -7,7 +7,7 @@ const chatSummary = [
   { id: 3, pet: "Max", lastMessage: "Vaccination reminder: Due in 2 weeks", unread: 1 },
   { id: 4, pet: "Bella", lastMessage: "Playdate arranged with Charlie", unread: 3 },
   { id: 5, pet: "Rocky", lastMessage: "Training session feedback", unread: 0 },
-]
+];
 
 export function ChatSummary() {
   return (
@@ -26,6 +26,6 @@ export function ChatSummary() {
         ))}
       </div>
     </ScrollArea>
-  )
+  );
 }
 

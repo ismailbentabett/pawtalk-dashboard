@@ -1,15 +1,15 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 type Match = {
-  id: string
-  name: string
-  species: string
-  breed: string
-}
+  id: string;
+  name: string;
+  species: string;
+  breed: string;
+};
 
 type PetMatchesProps = {
-  matches: Match[]
-}
+  matches: Match[];
+};
 
 export function PetMatches({ matches }: PetMatchesProps) {
   return (
@@ -27,6 +27,6 @@ export function PetMatches({ matches }: PetMatchesProps) {
         </div>
       ))}
     </div>
-  )
+  );
 }
 

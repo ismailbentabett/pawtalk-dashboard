@@ -1,14 +1,14 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 type Human = {
-  id: string
-  name: string
-  role: string
-}
+  id: string;
+  name: string;
+  role: string;
+};
 
 type PetHumansProps = {
-  humans: Human[]
-}
+  humans: Human[];
+};
 
 export function PetHumans({ humans }: PetHumansProps) {
   return (
@@ -26,6 +26,6 @@ export function PetHumans({ humans }: PetHumansProps) {
         </div>
       ))}
     </div>
-  )
+  );
 }
 

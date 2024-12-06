@@ -1,4 +1,4 @@
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
 
 const data = [
   { name: "Buddy & Max", matches: 95 },
@@ -6,7 +6,7 @@ const data = [
   { name: "Bella & Rocky", matches: 82 },
   { name: "Daisy & Cooper", matches: 79 },
   { name: "Milo & Lola", matches: 75 },
-]
+];
 
 export function TopMatchesChart() {
   return (
@@ -18,6 +18,6 @@ export function TopMatchesChart() {
         <Bar dataKey="matches" fill="#8884d8" />
       </BarChart>
     </ResponsiveContainer>
-  )
+  );
 }
 

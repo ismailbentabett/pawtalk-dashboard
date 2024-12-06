@@ -1,13 +1,13 @@
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts"
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 
 const data = [
   { name: "Dogs", value: 500 },
   { name: "Cats", value: 300 },
   { name: "Birds", value: 100 },
   { name: "Others", value: 50 },
-]
+];
 
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"]
+const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
 
 export function PetDistributionChart() {
   return (
@@ -30,6 +30,6 @@ export function PetDistributionChart() {
         <Legend />
       </PieChart>
     </ResponsiveContainer>
-  )
+  );
 }
 

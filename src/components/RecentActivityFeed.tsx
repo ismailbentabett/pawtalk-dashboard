@@ -1,5 +1,5 @@
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { ScrollArea } from "./ui/scroll-area";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 const activities = [
   { id: 1, user: "John Doe", action: "added a new pet", pet: "Max", time: "2 hours ago" },
@@ -7,7 +7,7 @@ const activities = [
   { id: 3, user: "Bob Johnson", action: "scheduled an appointment for", pet: "Buddy", time: "Yesterday" },
   { id: 4, user: "Alice Brown", action: "matched", pet: "Charlie with Daisy", time: "2 days ago" },
   { id: 5, user: "Eva White", action: "sent a message about", pet: "Bella", time: "3 days ago" },
-]
+];
 
 export function RecentActivityFeed() {
   return (
@@ -30,6 +30,6 @@ export function RecentActivityFeed() {
         ))}
       </div>
     </ScrollArea>
-  )
+  );
 }
 

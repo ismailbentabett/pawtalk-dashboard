@@ -1,24 +1,12 @@
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { AlertCircle } from "lucide-react";
 import { useState } from "react";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { Textarea } from "./ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
+import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
+import { AlertCircle } from 'lucide-react';
 
 export function QuickAddPetForm() {
   const [name, setName] = useState("");
@@ -32,11 +20,9 @@ export function QuickAddPetForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    // Here you would typically make an API call to add the pet
-    // For this example, we'll just simulate a successful addition
     if (name && species && breed && age && gender) {
       // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       // Reset form
       setName("");
       setSpecies("");
@@ -61,8 +47,8 @@ export function QuickAddPetForm() {
           <div className="grid w-full items-center gap-4">
             <div className="flex flex-col space-y-1.5">
               <Label htmlFor="name">Name*</Label>
-              <Input
-                id="name"
+              <Input 
+                id="name" 
                 placeholder="Pet's name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -71,7 +57,7 @@ export function QuickAddPetForm() {
             </div>
             <div className="flex flex-col space-y-1.5">
               <Label htmlFor="species">Species*</Label>
-              <Select value={species} onValueChange={setSpecies} required>
+              <Select value={species} onValueChange={setSpecies}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select species" />
                 </SelectTrigger>
@@ -85,8 +71,8 @@ export function QuickAddPetForm() {
             </div>
             <div className="flex flex-col space-y-1.5">
               <Label htmlFor="breed">Breed*</Label>
-              <Input
-                id="breed"
+              <Input 
+                id="breed" 
                 placeholder="Pet's breed"
                 value={breed}
                 onChange={(e) => setBreed(e.target.value)}
@@ -95,8 +81,8 @@ export function QuickAddPetForm() {
             </div>
             <div className="flex flex-col space-y-1.5">
               <Label htmlFor="age">Age*</Label>
-              <Input
-                id="age"
+              <Input 
+                id="age" 
                 placeholder="Pet's age"
                 value={age}
                 onChange={(e) => setAge(e.target.value)}
@@ -105,7 +91,7 @@ export function QuickAddPetForm() {
             </div>
             <div className="flex flex-col space-y-1.5">
               <Label htmlFor="gender">Gender*</Label>
-              <Select value={gender} onValueChange={setGender} required>
+              <Select value={gender} onValueChange={setGender}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select gender" />
                 </SelectTrigger>
@@ -118,8 +104,8 @@ export function QuickAddPetForm() {
             </div>
             <div className="flex flex-col space-y-1.5">
               <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
+              <Textarea 
+                id="description" 
                 placeholder="Pet's description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -133,11 +119,10 @@ export function QuickAddPetForm() {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          <Button className="w-full mt-4" type="submit">
-            Add Pet
-          </Button>
+          <Button className="w-full mt-4" type="submit">Add Pet</Button>
         </form>
       </CardContent>
     </Card>
   );
 }
+

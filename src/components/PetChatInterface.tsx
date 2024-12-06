@@ -1,30 +1,30 @@
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useState } from "react";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { ScrollArea } from "./ui/scroll-area";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 type Message = {
-  id: number
-  sender: string
-  content: string
-  timestamp: string
-}
+  id: number;
+  sender: string;
+  content: string;
+  timestamp: string;
+};
 
 type PetChatInterfaceProps = {
   pet: {
-    id: string
-    name: string
-    humans: { id: string; name: string; role: string }[]
-  }
-}
+    id: string;
+    name: string;
+    humans: { id: string; name: string; rolestring; role: string }[];
+  };
+};
 
 export function PetChatInterface({ pet }: PetChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([
     { id: 1, sender: "System", content: `Welcome to the chat for ${pet.name}!`, timestamp: new Date().toISOString() },
-  ])
-  const [newMessage, setNewMessage] = useState("")
-  const [currentUser, setCurrentUser] = useState(pet.humans[0])
+  ]);
+  const [newMessage, setNewMessage] = useState("");
+  const [currentUser, setCurrentUser] = useState(pet.humans[0]);
 
   const handleSendMessage = () => {
     if (newMessage.trim()) {
@@ -36,10 +36,10 @@ export function PetChatInterface({ pet }: PetChatInterfaceProps) {
           content: newMessage.trim(),
           timestamp: new Date().toISOString()
         },
-      ])
-      setNewMessage("")
+      ]);
+      setNewMessage("");
     }
-  }
+  };
 
   return (
     <div className="flex flex-col h-[500px]">
@@ -84,6 +84,6 @@ export function PetChatInterface({ pet }: PetChatInterfaceProps) {
         </select>
       </div>
     </div>
-  )
+  );
 }
 

@@ -1,5 +1,5 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
 
 const data = [
   { name: "Mon", matches: 12 },
@@ -9,7 +9,7 @@ const data = [
   { name: "Fri", matches: 30 },
   { name: "Sat", matches: 40 },
   { name: "Sun", matches: 35 },
-]
+];
 
 export function MatchAnalytics() {
   return (
@@ -28,6 +28,6 @@ export function MatchAnalytics() {
         </ResponsiveContainer>
       </CardContent>
     </Card>
-  )
+  );
 }
 
