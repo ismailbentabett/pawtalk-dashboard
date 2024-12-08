@@ -6,6 +6,7 @@ export const PROTECTED_ROUTES = {
     MATCHES: '/dashboard/matches',
     APPOINTMENTS: '/dashboard/appointments',
     SETTINGS: '/dashboard/settings',
+    PROFILE: '/dashboard/profile',
   } as const;
   
   export const PUBLIC_ROUTES = {
@@ -13,7 +14,9 @@ export const PROTECTED_ROUTES = {
     HOME: '/',
   } as const;
   
-  export const ROLE_BASED_ROUTES = {
-    [PROTECTED_ROUTES.ANALYTICS]: ['admin', 'moderator'],
+
+  export const ROLE_BASED_ROUTES: Record<string, string[]> = {
+    [PROTECTED_ROUTES.DASHBOARD]: ['user', 'admin'],
     [PROTECTED_ROUTES.SETTINGS]: ['admin'],
-  } as const;
+    [PROTECTED_ROUTES.PROFILE]: ['user', 'admin']
+  };
