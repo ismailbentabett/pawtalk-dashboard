@@ -23,5 +23,4 @@ export interface Pet {
       neutered: boolean;
       microchipped: boolean;
     };
-    shelterId: string;
   }
