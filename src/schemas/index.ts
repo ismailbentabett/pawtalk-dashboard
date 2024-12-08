@@ -30,7 +30,6 @@ export function getEmptyPet(): Pet {
       neutered: false,
       microchipped: false,
     },
-    shelterId: "",
   };
 }
 
