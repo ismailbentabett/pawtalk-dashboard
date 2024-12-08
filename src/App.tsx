@@ -12,42 +12,45 @@ import PetDetailsPage from "./pages/PetDetailsPage";
 import PetsPage from "./pages/PetsPage";
 import SettingsPage from "./pages/SettingsPage";
 import DashboardLayout from "./layouts/DashboardLayout";
+import { ToastProvider } from "@radix-ui/react-toast";
 
 function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          {/* Public Routes */}
-          <Route path={PUBLIC_ROUTES.LOGIN} element={<LoginPage />} />
+      <ToastProvider>
+        <AuthProvider>
+          <Routes>
+            {/* Public Routes */}
+            <Route path={PUBLIC_ROUTES.LOGIN} element={<LoginPage />} />
 
-          {/* Protected Dashboard Routes */}
-          <Route
-            path={PROTECTED_ROUTES.DASHBOARD}
-            element={<DashboardLayout />}
-          >
-            <Route index element={<DashboardPage />} />
-            <Route path="analytics" element={<AnalyticsPage />} />
-            <Route path="pets" element={<PetsPage />} />
-            <Route path="pets/:id" element={<PetDetailsPage />} />
-            <Route path="messages" element={<MessagesPage />} />
-            <Route path="matches" element={<MatchesPage />} />
-            <Route path="appointments" element={<AppointmentsPage />} />
-            <Route path="settings" element={<SettingsPage />} />
-          </Route>
+            {/* Protected Dashboard Routes */}
+            <Route
+              path={PROTECTED_ROUTES.DASHBOARD}
+              element={<DashboardLayout />}
+            >
+              <Route index element={<DashboardPage />} />
+              <Route path="analytics" element={<AnalyticsPage />} />
+              <Route path="pets" element={<PetsPage />} />
+              <Route path="pets/:id" element={<PetDetailsPage />} />
+              <Route path="messages" element={<MessagesPage />} />
+              <Route path="matches" element={<MatchesPage />} />
+              <Route path="appointments" element={<AppointmentsPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+            </Route>
 
-          {/* Redirect Routes */}
-          <Route
-            path={PUBLIC_ROUTES.HOME}
-            element={<Navigate to={PROTECTED_ROUTES.DASHBOARD} replace />}
-          />
-          <Route
-            path="*"
-            element={<Navigate to={PROTECTED_ROUTES.DASHBOARD} replace />}
-          />
-        </Routes>
-        <Toaster />
-      </AuthProvider>
+            {/* Redirect Routes */}
+            <Route
+              path={PUBLIC_ROUTES.HOME}
+              element={<Navigate to={PROTECTED_ROUTES.DASHBOARD} replace />}
+            />
+            <Route
+              path="*"
+              element={<Navigate to={PROTECTED_ROUTES.DASHBOARD} replace />}
+            />
+          </Routes>
+          <Toaster />
+        </AuthProvider>
+      </ToastProvider>
     </BrowserRouter>
   );
 }
