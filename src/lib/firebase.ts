@@ -14,6 +14,7 @@ import {
   serverTimestamp,
   updateDoc
 } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -27,6 +28,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const storage = getStorage(app);
+
 
 // Set persistence to LOCAL
 setPersistence(auth, browserLocalPersistence);
