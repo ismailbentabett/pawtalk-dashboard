@@ -32,6 +32,7 @@ import {
   StepperContent,
   StepperNavigation,
 } from "@/components/ui/stepper";
+import { ModernImageUpload } from "./ImageUpload";
 
 const petSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -97,8 +98,9 @@ export function QuickAddPetForm({ onSuccess, onError }: QuickAddPetFormProps) {
         neutered: false,
         microchipped: false,
       },
-      images: [],
-    },
+      mainImage: "",
+      additionalImages: [],
+    }
   });
 
   const submitPetData = async (data: PetFormData) => {
@@ -192,6 +194,15 @@ export function QuickAddPetForm({ onSuccess, onError }: QuickAddPetFormProps) {
 
         <StepperContent step={0} currentStep={currentStep}>
           <div className="grid grid-cols-2 gap-4">
+            <ModernImageUpload
+              mainImage={form.watch("mainImage")}
+              additionalImages={form.watch("additionalImages")}
+              onMainImageChange={(url) => form.setValue("mainImage", url)}
+              onAdditionalImagesChange={(urls) =>
+                form.setValue("additionalImages", urls)
+              }
+              className="w-full"
+            />
             <FormField
               control={form.control}
               name="name"
@@ -483,7 +494,7 @@ export function QuickAddPetForm({ onSuccess, onError }: QuickAddPetFormProps) {
           </Alert>
         )}
 
-   <StepperNavigation
+        <StepperNavigation
           currentStep={currentStep}
           totalSteps={steps.length}
           onNext={handleNext}
@@ -491,21 +502,21 @@ export function QuickAddPetForm({ onSuccess, onError }: QuickAddPetFormProps) {
         />
 
         {currentStep === steps.length - 1 && (
-           <Button
-              type="button"
-              disabled={isSubmitting}
-              onClick={handleNext}
-              className="ml-2 w-full"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Adding Pet...
-                </>
-              ) : (
-                "Add Pet"
-              )}
-            </Button>
+          <Button
+            type="button"
+            disabled={isSubmitting}
+            onClick={handleNext}
+            className="ml-2 w-full"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Adding Pet...
+              </>
+            ) : (
+              "Add Pet"
+            )}
+          </Button>
         )}
       </form>
     </Form>
