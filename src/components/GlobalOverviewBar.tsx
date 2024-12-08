@@ -1,17 +1,26 @@
 import { useState } from "react";
-import { Search, Plus, TrendingUp, Users, Calendar, MessageSquare } from 'lucide-react';
+import {
+  Search,
+  Plus,
+  TrendingUp,
+  Users,
+  Calendar,
+  MessageSquare,
+} from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "./ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { QuickAddPetForm } from "./QuickAddPetForm";
+import QuickAddPetModal from "./QuickAddPetModal";
 
 export function GlobalOverviewBar() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [modalState, setModalState] = useState(false);
+
+  const openModal = () => {
+    setModalState(true);
+  };
 
   return (
     <div className="bg-white rounded-lg shadow p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -55,7 +64,7 @@ export function GlobalOverviewBar() {
               <div className="grid gap-4">
                 <h4 className="font-medium leading-none">Quick Add</h4>
                 <div className="grid gap-2">
-                  <Button className="w-full" onClick={() => document.getElementById('quick-add-pet-modal')?.showModal()}>
+                  <Button className="w-full" onClick={() => openModal()}>
                     <Users className="mr-2 h-4 w-4" />
                     Add New Pet
                   </Button>
@@ -79,17 +88,7 @@ export function GlobalOverviewBar() {
           </div>
         </div>
       </div>
-      <dialog id="quick-add-pet-modal" className="modal">
-        <div className="modal-box w-11/12 max-w-5xl">
-          <QuickAddPetForm />
-          <div className="modal-action">
-            <form method="dialog">
-              <Button>Close</Button>
-            </form>
-          </div>
-        </div>
-      </dialog>
+      <QuickAddPetModal isOpen={modalState} onClose={() => setModalState(false)} />
     </div>
   );
 }
-
