@@ -1,105 +1,224 @@
-'use client'
+"use client";
 
-import React, { useState, useCallback } from 'react'
-import { useDropzone } from 'react-dropzone'
-import { storage } from '@/lib/firebase'
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
-import { cn } from '@/lib/utils'
-import { ImageIcon, Loader2, ArrowUpDown, Trash2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import React, { useState, useCallback } from "react";
+import { useDropzone } from "react-dropzone";
+import { cn } from "@/lib/utils";
+import { ImageIcon, Loader2, ArrowUpDown, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Cloudinary } from "@cloudinary/url-gen";
+import { quality, format } from "@cloudinary/url-gen/actions/delivery";
+import { auto } from "@cloudinary/url-gen/qualifiers/quality";
+import { fill } from "@cloudinary/url-gen/actions/resize";
 
 interface ModernImageUploadProps {
-  onImagesChange: (urls: string[]) => void
-  className?: string
+  onChange: (urls: { main: string; additional: string[] }) => void;
+  value?: { main: string; additional: string[] };
+  className?: string;
 }
 
-export function ModernImageUpload({ onImagesChange, className }: ModernImageUploadProps) {
-  const [images, setImages] = useState<string[]>([])
-  const [uploading, setUploading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+// Initialize Cloudinary
+const cld = new Cloudinary({
+  cloud: {
+    cloudName: import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "dkdscxzz7",
+  },
+});
 
-  const uploadImage = async (file: File): Promise<string> => {
-    const timestamp = Date.now()
-    const storageRef = ref(storage, `pet-images/${timestamp}_${file.name}`)
-    await uploadBytes(storageRef, file)
-    return getDownloadURL(storageRef)
-  }
+export function ModernImageUpload({
+  onChange,
+  value = { main: "", additional: [] },
+  className,
+}: ModernImageUploadProps) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    setUploading(true)
-    setError(null)
+  const uploadToCloudinary = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append(
+      "upload_preset",
+      import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || ""
+    );
 
     try {
-      const uploadPromises = acceptedFiles.map(uploadImage)
-      const urls = await Promise.all(uploadPromises)
-      setImages(prevImages => [...prevImages, ...urls])
-      onImagesChange([...images, ...urls])
-    } catch (err) {
-      setError('Failed to upload images')
-    } finally {
-      setUploading(false)
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${
+          import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
+        }/image/upload`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Upload failed: ${errorData.error.message}`);
+      }
+
+      const data = await response.json();
+
+      // Create an optimized image URL using the SDK
+      const optimizedImage = cld
+        .image(data.public_id)
+        .delivery(quality(auto()))
+        .delivery(format("auto"))
+        .resize(fill().width(1200).height(800));
+
+      return optimizedImage.toURL();
+    } catch (error) {
+      console.error("Error uploading to Cloudinary:", error);
+      throw error;
     }
-  }, [images, onImagesChange])
+  };
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop })
+  const onDrop = useCallback(
+    async (acceptedFiles: File[]) => {
+      setUploading(true);
+      setError(null);
 
-  const removeImage = (index: number) => {
-    const newImages = images.filter((_, i) => i !== index)
-    setImages(newImages)
-    onImagesChange(newImages)
-  }
+      try {
+        const validFiles = acceptedFiles.filter(
+          (file) => file.size <= 10 * 1024 * 1024
+        );
 
-  const moveImage = (fromIndex: number, toIndex: number) => {
-    const newImages = [...images]
-    const [movedImage] = newImages.splice(fromIndex, 1)
-    newImages.splice(toIndex, 0, movedImage)
-    setImages(newImages)
-    onImagesChange(newImages)
-  }
+        if (validFiles.length < acceptedFiles.length) {
+          setError("Some files were skipped because they exceed 10MB");
+        }
+
+        const uploadPromises = validFiles.map(uploadToCloudinary);
+        const newUrls = await Promise.all(uploadPromises);
+
+        const updatedImages = {
+          main: value.main || newUrls[0] || "",
+          additional: [
+            ...value.additional,
+            ...(value.main ? newUrls : newUrls.slice(1)),
+          ],
+        };
+
+        onChange(updatedImages);
+      } catch (err) {
+        setError("Failed to upload images. Please try again.");
+        console.error("Upload error:", err);
+      } finally {
+        setUploading(false);
+      }
+    },
+    [value, onChange]
+  );
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      "image/*": [".png", ".jpg", ".jpeg", ".webp", ".avif"],
+    },
+    maxSize: 10 * 1024 * 1024,
+    multiple: true,
+  });
+
+  const removeImage = (index: number, isMain: boolean = false) => {
+    if (isMain) {
+      const newMain = value.additional[0] || "";
+      onChange({
+        main: newMain,
+        additional: value.additional.slice(1),
+      });
+    } else {
+      onChange({
+        main: value.main,
+        additional: value.additional.filter((_, i) => i !== index),
+      });
+    }
+  };
+
+  const makeMainImage = (index: number) => {
+    const oldMain = value.main;
+    const newMain = value.additional[index];
+    const newAdditional = [...value.additional];
+    newAdditional.splice(index, 1);
+
+    if (oldMain) {
+      newAdditional.unshift(oldMain);
+    }
+
+    onChange({
+      main: newMain,
+      additional: newAdditional,
+    });
+  };
 
   return (
-    <div className={cn('space-y-4', className)}>
+    <div className={cn("space-y-4", className)}>
       <div
         {...getRootProps()}
         className={cn(
-          'border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors',
-          isDragActive ? 'border-primary bg-primary/10' : 'border-gray-300 hover:border-primary'
+          "border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors",
+          isDragActive
+            ? "border-primary bg-primary/10"
+            : "border-gray-300 hover:border-primary"
         )}
       >
         <input {...getInputProps()} />
         {uploading ? (
-          <Loader2 className="w-10 h-10 mx-auto text-primary animate-spin" />
+          <div className="space-y-2">
+            <Loader2 className="w-10 h-10 mx-auto text-primary animate-spin" />
+            <p className="text-sm text-gray-600">
+              Uploading and optimizing images...
+            </p>
+          </div>
         ) : (
           <>
             <ImageIcon className="w-10 h-10 mx-auto text-gray-400 mb-4" />
             <p className="text-sm text-gray-600">
               Drag & drop images here, or click to select files
             </p>
+            <p className="text-xs text-gray-500 mt-2">
+              Maximum file size: 10MB. Supported formats: PNG, JPG, JPEG, WebP,
+              AVIF
+            </p>
           </>
         )}
       </div>
 
-      {images.length > 0 && (
+      {(value.main || value.additional.length > 0) && (
         <div className="space-y-2">
           <h3 className="text-lg font-semibold">Uploaded Images</h3>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {images.map((url, index) => (
-              <div key={url} className="relative group">
+            {value.main && (
+              <div className="relative group">
                 <img
-                  src={url}
-                  alt={`Uploaded ${index + 1}`}
-                  className={cn(
-                    'w-full aspect-square object-cover rounded-lg',
-                    index === 0 && 'ring-2 ring-primary'
-                  )}
+                  src={value.main}
+                  alt="Main"
+                  className="w-full aspect-square object-cover rounded-lg ring-2 ring-primary"
                 />
                 <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center space-x-2">
                   <Button
                     size="icon"
                     variant="ghost"
-                    onClick={() => moveImage(index, Math.max(0, index - 1))}
-                    disabled={index === 0}
+                    onClick={() => removeImage(0, true)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+                <span className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs px-2 py-1 rounded">
+                  Main
+                </span>
+              </div>
+            )}
+
+            {value.additional.map((url, index) => (
+              <div key={url} className="relative group">
+                <img
+                  src={url}
+                  alt={`Additional ${index + 1}`}
+                  className="w-full aspect-square object-cover rounded-lg"
+                />
+                <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center space-x-2">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => makeMainImage(index)}
                   >
                     <ArrowUpDown className="w-4 h-4" />
                   </Button>
@@ -111,11 +230,6 @@ export function ModernImageUpload({ onImagesChange, className }: ModernImageUplo
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
-                {index === 0 && (
-                  <span className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs px-2 py-1 rounded">
-                    Main
-                  </span>
-                )}
               </div>
             ))}
           </div>
@@ -128,6 +242,5 @@ export function ModernImageUpload({ onImagesChange, className }: ModernImageUplo
         </Alert>
       )}
     </div>
-  )
+  );
 }
-
