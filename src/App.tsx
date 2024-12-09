@@ -1,7 +1,9 @@
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ToastProvider } from "@radix-ui/react-toast";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "./components/ui/toaster";
 import { PROTECTED_ROUTES, PUBLIC_ROUTES } from "./constants/routes";
+import DashboardLayout from "./layouts/DashboardLayout";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import AppointmentsPage from "./pages/AppointmentsPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -11,10 +13,11 @@ import MessagesPage from "./pages/MessagesPage";
 import PetDetailsPage from "./pages/PetDetailsPage";
 import PetsPage from "./pages/PetsPage";
 import SettingsPage from "./pages/SettingsPage";
-import DashboardLayout from "./layouts/DashboardLayout";
-import { ToastProvider } from "@radix-ui/react-toast";
+
 
 function App() {
+
+
   return (
     <BrowserRouter>
       <ToastProvider>
