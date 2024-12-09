@@ -15,6 +15,8 @@ export interface Pet {
   tags: string[];
   vaccinated: boolean;
   profileComplete: boolean;
+  images : string[];
+  mainImage : string;
 }
 
 export interface PetFilters {
