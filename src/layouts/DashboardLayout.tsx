@@ -1,7 +1,7 @@
 import { Outlet, Link } from 'react-router-dom';
 import { Button } from "../components/ui/button";
-import Sidebar from '@/components/Sidebar';
-import Header from '@/components/Header';
+import Sidebar from '../components/Sidebar';
+import Header from '../components/Header';
 
 export default function DashboardLayout() {
   return (
@@ -21,4 +21,3 @@ export default function DashboardLayout() {
     </div>
   );
 }
-
