@@ -13,6 +13,14 @@ interface ModernImageUploadProps {
   className?: string;
 }
 
+// Helper function to generate Cloudinary URL
+const getCloudinaryUrl = (publicId: string) => {
+  if (!publicId) return "";
+  return `https://res.cloudinary.com/${
+    import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
+  }/image/upload/c_fill,w_400,h_400,q_auto,f_auto/${publicId}`;
+};
+
 export function ModernImageUpload({
   onChange,
   value = { main: "", additional: [] },
@@ -28,6 +36,7 @@ export function ModernImageUpload({
       "upload_preset",
       import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || ""
     );
+
     try {
       const response = await fetch(
         `https://api.cloudinary.com/v1_1/${
@@ -45,7 +54,7 @@ export function ModernImageUpload({
       }
 
       const data = await response.json();
-      return data.public_id; // Return only the public_id
+      return data.public_id;
     } catch (error) {
       console.error("Error uploading to Cloudinary:", error);
       throw error;
@@ -67,13 +76,13 @@ export function ModernImageUpload({
         }
 
         const uploadPromises = validFiles.map(uploadToCloudinary);
-        const newUrls = await Promise.all(uploadPromises);
+        const newPublicIds = await Promise.all(uploadPromises);
 
         const updatedImages = {
-          main: value.main || newUrls[0] || "",
+          main: value.main || newPublicIds[0] || "",
           additional: [
             ...value.additional,
-            ...(value.main ? newUrls : newUrls.slice(1)),
+            ...(value.main ? newPublicIds : newPublicIds.slice(1)),
           ],
         };
 
@@ -168,7 +177,7 @@ export function ModernImageUpload({
             {value.main && (
               <div className="relative group">
                 <img
-                  src={value.main}
+                  src={getCloudinaryUrl(value.main)}
                   alt="Main"
                   className="w-full aspect-square object-cover rounded-lg ring-2 ring-primary"
                 />
@@ -187,10 +196,10 @@ export function ModernImageUpload({
               </div>
             )}
 
-            {value.additional.map((url, index) => (
-              <div key={url} className="relative group">
+            {value.additional.map((publicId, index) => (
+              <div key={publicId} className="relative group">
                 <img
-                  src={url}
+                  src={getCloudinaryUrl(publicId)}
                   alt={`Additional ${index + 1}`}
                   className="w-full aspect-square object-cover rounded-lg"
                 />
