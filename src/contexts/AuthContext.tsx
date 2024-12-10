@@ -1,5 +1,5 @@
 import { auth, db } from "@/lib/firebase";
-import { UserData, UserRole } from "../types/Auth";
+import { UserData, UserRole } from "@/types/Auth";
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
