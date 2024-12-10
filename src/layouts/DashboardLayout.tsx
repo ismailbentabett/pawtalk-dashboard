@@ -1,7 +1,7 @@
-import { Outlet, Link } from 'react-router-dom';
-import { Button } from "../components/ui/button";
-import Sidebar from '../components/Sidebar';
-import Header from '../components/Header';
+import { Link, Outlet } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import Header from "../../src/components/Header";
+import Sidebar from "../../src/components/Sidebar";
 
 export default function DashboardLayout() {
   return (
