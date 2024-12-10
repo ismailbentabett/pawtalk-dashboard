@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Badge } from "./ui/badge";
-import { Pet } from "@/types/pet";
+import { Pet } from "@/types/Pet";
 
 const handleStatusToggle = (pet: Pet) => {
   // Implement the status toggle logic here

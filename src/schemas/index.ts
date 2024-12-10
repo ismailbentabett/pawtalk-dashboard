@@ -2,7 +2,7 @@
 import { Conversation } from "@/types/Conversation";
 import { Match } from "@/types/Match";
 import { Message } from "@/types/Message";
-import { Pet } from "@/types/Pet";
+import { Pet } from "import { Pet } from "@/types/Pet";";
 import { Shelter } from "@/types/Shelter";
 import { Timestamp } from "firebase/firestore";
 

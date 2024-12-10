@@ -1,4 +1,4 @@
-import { PetFilters } from "@/types/Pet";
+import { PetFilters } from "import { Pet } from "@/types/Pet";";
 
 export const PETS_PER_PAGE = 10;
 

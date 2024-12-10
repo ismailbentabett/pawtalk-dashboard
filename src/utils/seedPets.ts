@@ -1,4 +1,4 @@
-import { Pet } from '@/types/Pet';
+import { Pet } from 'import { Pet } from "@/types/Pet";';
 import { collection, doc, setDoc, getDocs, query } from 'firebase/firestore';
 
 interface PetConfig {
