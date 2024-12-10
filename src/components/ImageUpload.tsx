@@ -3,10 +3,6 @@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Cloudinary } from "@cloudinary/url-gen";
-import { format, quality } from "@cloudinary/url-gen/actions/delivery";
-import { fill } from "@cloudinary/url-gen/actions/resize";
-import { auto } from "@cloudinary/url-gen/qualifiers/quality";
 import { ArrowUpDown, ImageIcon, Loader2, Trash2 } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
@@ -16,13 +12,6 @@ interface ModernImageUploadProps {
   value?: { main: string; additional: string[] };
   className?: string;
 }
-
-// Initialize Cloudinary
-const cld = new Cloudinary({
-  cloud: {
-    cloudName: import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "dkdscxzz7",
-  },
-});
 
 export function ModernImageUpload({
   onChange,
@@ -39,7 +28,6 @@ export function ModernImageUpload({
       "upload_preset",
       import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || ""
     );
-
     try {
       const response = await fetch(
         `https://api.cloudinary.com/v1_1/${
@@ -57,15 +45,7 @@ export function ModernImageUpload({
       }
 
       const data = await response.json();
-
-      // Create an optimized image URL using the SDK
-      const optimizedImage = cld
-        .image(data.public_id)
-        .delivery(quality(auto()))
-        .delivery(format("auto"))
-        .resize(fill().width(1200).height(800));
-
-      return optimizedImage.toURL();
+      return data.public_id; // Return only the public_id
     } catch (error) {
       console.error("Error uploading to Cloudinary:", error);
       throw error;

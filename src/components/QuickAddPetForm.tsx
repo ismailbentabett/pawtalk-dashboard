@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/stepper";
 import { ModernImageUpload } from "./ImageUpload";
 import { format, quality } from "@cloudinary/url-gen/actions/delivery";
+import { fill } from "@cloudinary/url-gen/actions/resize";
 
 // Initialize Cloudinary
 const cld = new Cloudinary({
@@ -131,16 +132,18 @@ export function QuickAddPetForm({ onSuccess, onError }: QuickAddPetFormProps) {
 
       // Create optimized image URLs using Cloudinary SDK
       const optimizedImages = {
-        main: cld
+        main: data.images.main ? cld
           .image(data.images.main)
           .delivery(quality("auto"))
           .delivery(format("auto"))
-          .toURL(),
-        additional: data.images.additional.map((img) =>
+          .resize(fill().width(1200).height(800))
+          .toURL() : "",
+        additional: data.images.additional.map((publicId) =>
           cld
-            .image(img)
+            .image(publicId)
             .delivery(quality("auto"))
             .delivery(format("auto"))
+            .resize(fill().width(1200).height(800))
             .toURL()
         ),
       };
