@@ -12,9 +12,9 @@ import {
 } from "@tanstack/react-table";
 import {
   DocumentData,
+  Query,
   QueryDocumentSnapshot,
   collection,
-  deleteDoc,
   doc,
   getDocs,
   limit,
@@ -22,10 +22,8 @@ import {
   query,
   serverTimestamp,
   startAfter,
-  updateDoc,
   where,
-  writeBatch,
-  Query,
+  writeBatch
 } from "firebase/firestore";
 import {
   Download,
@@ -78,11 +76,11 @@ import {
   TableRow,
 } from "./ui/table";
 
-import { INITIAL_FILTERS, PETS_PER_PAGE } from "../constants/petManagement";
-import { Pet, PetFilters } from "../types/pet";
-import { columns } from "./PetColumns";
-import { db } from "@/lib/firebase";
 import { toast } from "@/hooks/use-toast";
+import { db } from "@/lib/firebase";
+import { INITIAL_FILTERS, PETS_PER_PAGE } from "../constants/petManagement";
+import { Pet, PetFilters } from "../types/Pet";
+import { columns } from "./PetColumns";
 
 export function PetManagement() {
   // State Management
