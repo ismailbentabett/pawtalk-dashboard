@@ -1,4 +1,4 @@
-import { UserData } from "@/types/Auth";
+import { UserData } from "../types/Auth";
 import { initializeApp } from "firebase/app";
 import {
   AuthError,
