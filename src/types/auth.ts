@@ -2,6 +2,7 @@
 export type UserRole = 'user' | 'moderator' | 'admin';
 
 export interface UserData {
+  [x: string]: unknown;
   id: string;
   email: string;
   role: UserRole;

@@ -32,10 +32,10 @@ export function QuickAddPetModal({
             });
             onClose();
           }}
-          onError={(error) => {
+          onError={() => {
             toast({
               title: "Error",
-              description: error.message,
+              description: "An error occurred while adding the pet.",
               variant: "destructive",
             });
           }}

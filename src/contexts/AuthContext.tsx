@@ -1,5 +1,5 @@
 import { auth, db } from "@/lib/firebase";
-import { UserData, UserRole } from "@/types/auth";
+import { UserData, UserRole } from "@/types/Auth";
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -169,10 +169,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
 
         navigate("/dashboard", { replace: true });
-      } catch (error: any) {
+      } catch (error: unknown | Error) {
         let errorMessage = "Failed to create account";
 
-        switch (error.code) {
+        const firebaseError = error as { code: string };
+        switch (firebaseError.code) {
           case "auth/email-already-in-use":
             errorMessage = "Email is already registered";
             break;

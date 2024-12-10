@@ -16,15 +16,15 @@ export function getEmptyPet(): Pet {
     gender: "male",
     description: "",
     images: [],
-    status: "available",
+    status: "Active",
     location: {
       city: "",
       state: "",
       country: "",
     },
     adoptionFee: 0,
-    createdAt: Timestamp.now(),
-    updatedAt: Timestamp.now(),
+    createdAt: Timestamp.now().toDate(),
+    updatedAt: Timestamp.now().toDate(),
     healthInfo: {
       vaccinated: false,
       neutered: false,
@@ -39,7 +39,7 @@ export function getEmptyMatch(): Match {
     userId: '',
     petId: '', 
     status: 'liked',
-    createdAt: Timestamp.now(),
+    createdAt:  Timestamp.now() ,
     matchedAt: Timestamp.now() // Changed from undefined to Timestamp
   };
  }
@@ -49,8 +49,8 @@ export function getEmptyConversation(): Conversation {
     id: "",
     participants: [],
     petId: "",
-    createdAt: Timestamp.now(),
-    lastMessageAt: Timestamp.now(),
+    createdAt:  Timestamp.now() ,
+    lastMessageAt: Timestamp.now() ,
     status: "active",
   };
 }

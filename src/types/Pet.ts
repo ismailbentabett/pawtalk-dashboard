@@ -1,3 +1,5 @@
+import { Match } from "date-fns";
+
 export interface Pet {
   id: string;
   name: string;
@@ -7,7 +9,7 @@ export interface Pet {
   status: 'Active' | 'Inactive';
   matchRate: string;
   lastActivity: string;
-  matches: string[];
+  matches: Match[];
   humans: string[];
   createdAt: Date;
   updatedAt: Date;
@@ -17,6 +19,21 @@ export interface Pet {
   profileComplete: boolean;
   images : string[];
   mainImage : string;
+  type : string;
+  breed : string
+  description : string;
+  gender : string;
+  location : {
+    city : string;
+    state : string;
+    country : string;
+  };
+  adoptionFee : number;
+  healthInfo : {
+    vaccinated : boolean;
+    neutered : boolean;
+    microchipped : boolean;
+  };
 }
 
 export interface PetFilters {

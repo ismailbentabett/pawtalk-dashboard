@@ -11,7 +11,6 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import { QuickAddPetForm } from "./QuickAddPetForm";
 import QuickAddPetModal from "./QuickAddPetModal";
 
 export function GlobalOverviewBar() {
@@ -88,7 +87,10 @@ export function GlobalOverviewBar() {
           </div>
         </div>
       </div>
-      <QuickAddPetModal isOpen={modalState} onClose={() => setModalState(false)} />
+      <QuickAddPetModal
+        isOpen={modalState}
+        onClose={() => setModalState(false)}
+      />
     </div>
   );
 }

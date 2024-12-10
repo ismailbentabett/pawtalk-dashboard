@@ -7,30 +7,93 @@ import { ScrollArea } from "./ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 const chatThreads = [
-  { id: 1, name: "John Doe", lastMessage: "Hello, how are you?", status: "active", priority: "high", avatar: "/placeholder.svg?height=40&width=40" },
-  { id: 2, name: "Jane Smith", lastMessage: "When is the next appointment?", status: "pending", priority: "medium", avatar: "/placeholder.svg?height=40&width=40" },
-  { id: 3, name: "Bob Johnson", lastMessage: "Thanks for your help!", status: "closed", priority: "low", avatar: "/placeholder.svg?height=40&width=40" },
-  { id: 4, name: "Alice Brown", lastMessage: "Can you recommend a good vet?", status: "active", priority: "medium", avatar: "/placeholder.svg?height=40&width=40" },
-  { id: 5, name: "Charlie Davis", lastMessage: "My dog isn't eating well", status: "active", priority: "high", avatar: "/placeholder.svg?height=40&width=40" },
+  {
+    id: 1,
+    name: "John Doe",
+    lastMessage: "Hello, how are you?",
+    status: "active",
+    priority: "high",
+    avatar: "/placeholder.svg?height=40&width=40",
+  },
+  {
+    id: 2,
+    name: "Jane Smith",
+    lastMessage: "When is the next appointment?",
+    status: "pending",
+    priority: "medium",
+    avatar: "/placeholder.svg?height=40&width=40",
+  },
+  {
+    id: 3,
+    name: "Bob Johnson",
+    lastMessage: "Thanks for your help!",
+    status: "closed",
+    priority: "low",
+    avatar: "/placeholder.svg?height=40&width=40",
+  },
+  {
+    id: 4,
+    name: "Alice Brown",
+    lastMessage: "Can you recommend a good vet?",
+    status: "active",
+    priority: "medium",
+    avatar: "/placeholder.svg?height=40&width=40",
+  },
+  {
+    id: 5,
+    name: "Charlie Davis",
+    lastMessage: "My dog isn't eating well",
+    status: "active",
+    priority: "high",
+    avatar: "/placeholder.svg?height=40&width=40",
+  },
 ];
 
 const mockMessages = [
-  { id: 1, sender: "user", content: "Hi, I have a question about my pet's diet." },
-  { id: 2, sender: "admin", content: "Hello! I'd be happy to help. What specific concerns do you have about your pet's diet?" },
-  { id: 3, sender: "user", content: "My dog seems to be losing interest in his food. Is this normal?" },
-  { id: 4, sender: "admin", content: "It's not uncommon for dogs to occasionally lose interest in their food, but persistent loss of appetite can be a concern. How long has this been going on?" },
+  {
+    id: 1,
+    sender: "user",
+    content: "Hi, I have a question about my pet's diet.",
+  },
+  {
+    id: 2,
+    sender: "admin",
+    content:
+      "Hello! I'd be happy to help. What specific concerns do you have about your pet's diet?",
+  },
+  {
+    id: 3,
+    sender: "user",
+    content: "My dog seems to be losing interest in his food. Is this normal?",
+  },
+  {
+    id: 4,
+    sender: "admin",
+    content:
+      "It's not uncommon for dogs to occasionally lose interest in their food, but persistent loss of appetite can be a concern. How long has this been going on?",
+  },
   { id: 5, sender: "user", content: "It's been about a week now." },
-  { id: 6, sender: "admin", content: "I see. There could be several reasons for this. Has there been any change in your dog's routine or environment recently? Also, have you noticed any other symptoms like lethargy or changes in water consumption?" },
+  {
+    id: 6,
+    sender: "admin",
+    content:
+      "I see. There could be several reasons for this. Has there been any change in your dog's routine or environment recently? Also, have you noticed any other symptoms like lethargy or changes in water consumption?",
+  },
 ];
 
 export function CommunicationCenter() {
-  const [selectedThread, setSelectedThread] = useState(null);
+  const [selectedThread, setSelectedThread] = useState<
+    (typeof chatThreads)[0] | null
+  >(null);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState(mockMessages);
 
   const handleSendMessage = () => {
     if (message.trim()) {
-      setMessages([...messages, { id: messages.length + 1, sender: "admin", content: message }]);
+      setMessages([
+        ...messages,
+        { id: messages.length + 1, sender: "admin", content: message },
+      ]);
       setMessage("");
     }
   };
@@ -58,12 +121,16 @@ export function CommunicationCenter() {
                   </Avatar>
                   <div>
                     <div className="font-semibold">{thread.name}</div>
-                    <div className="text-sm text-gray-500">{thread.lastMessage}</div>
+                    <div className="text-sm text-gray-500">
+                      {thread.lastMessage}
+                    </div>
                   </div>
                 </div>
                 <div className="flex justify-between mt-1">
                   <Badge
-                    variant={thread.status === "active" ? "default" : "secondary"}
+                    variant={
+                      thread.status === "active" ? "default" : "secondary"
+                    }
                   >
                     {thread.status}
                   </Badge>
@@ -129,4 +196,3 @@ export function CommunicationCenter() {
     </Card>
   );
 }
-

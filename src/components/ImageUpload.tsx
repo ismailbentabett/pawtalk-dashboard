@@ -1,15 +1,15 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
-import { useDropzone } from "react-dropzone";
-import { cn } from "@/lib/utils";
-import { ImageIcon, Loader2, ArrowUpDown, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Cloudinary } from "@cloudinary/url-gen";
-import { quality, format } from "@cloudinary/url-gen/actions/delivery";
-import { auto } from "@cloudinary/url-gen/qualifiers/quality";
+import { format, quality } from "@cloudinary/url-gen/actions/delivery";
 import { fill } from "@cloudinary/url-gen/actions/resize";
+import { auto } from "@cloudinary/url-gen/qualifiers/quality";
+import { ArrowUpDown, ImageIcon, Loader2, Trash2 } from "lucide-react";
+import { useCallback, useState } from "react";
+import { useDropzone } from "react-dropzone";
 
 interface ModernImageUploadProps {
   onChange: (urls: { main: string; additional: string[] }) => void;

@@ -54,11 +54,28 @@ const getPetDetails = (id: string) => {
 
 export default function PetDetailsPage() {
   const { id } = useParams<{ id: string }>();
-  const [pet, setPet] = useState<any>(null);
+  interface Pet {
+    id: string;
+    name: string;
+    species: string;
+    breed: string;
+    age: number;
+    owner: string;
+    status: string;
+    matchRate: string;
+    lastActivity: string;
+    matches: { id: string; name: string; species: string; breed: string }[];
+    humans: { id: string; name: string; role: string }[];
+  }
+
+  const [pet, setPet] = useState<Pet | null>(null);
 
   useEffect(() => {
     if (id) {
-      setPet(getPetDetails(id));
+      const petDetails = getPetDetails(id);
+      if (petDetails) {
+        setPet(petDetails);
+      }
     }
   }, [id]);
 

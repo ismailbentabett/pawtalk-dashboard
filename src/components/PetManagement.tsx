@@ -25,6 +25,7 @@ import {
   updateDoc,
   where,
   writeBatch,
+  Query,
 } from "firebase/firestore";
 import {
   Download,
@@ -111,9 +112,9 @@ export function PetManagement() {
 
   // Firebase Query Builder
   const buildQuery = useCallback(
-    (searchTerm = "", filterState = filters) => {
-      let baseQuery = collection(db, "pets");
-      let constraints = [];
+    (searchTerm = "", filterState = filters): Query<DocumentData> => {
+      const baseQuery = collection(db, "pets");
+      const constraints = [];
 
       // Add search constraint
       if (searchTerm) {
@@ -148,55 +149,59 @@ export function PetManagement() {
   );
 
   // Data Fetching
-  const fetchPets = async (searchTerm = "") => {
-    try {
-      setLoading(true);
-      setError(null);
+  const fetchPets = useCallback(
+    async (searchTerm = "") => {
+      try {
+        setLoading(true);
+        setError(null);
 
-      const petsQuery = buildQuery(searchTerm);
-      const snapshot = await getDocs(petsQuery);
+        const petsQuery = buildQuery(searchTerm);
+        const snapshot = await getDocs(petsQuery);
 
-      if (snapshot.empty) {
-        setPets([]);
-        setHasMore(false);
-        return;
+        if (snapshot.empty) {
+          setPets([]);
+          setHasMore(false);
+          return;
+        }
+
+        const fetchedPets = snapshot.docs.map(
+          (doc) =>
+            ({
+              id: doc.id,
+              ...doc.data(),
+              createdAt: doc.data().createdAt?.toDate(),
+              updatedAt: doc.data().updatedAt?.toDate(),
+            } as Pet)
+        );
+
+        setPets(fetchedPets);
+        setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
+        setHasMore(snapshot.docs.length === PETS_PER_PAGE);
+      } catch (err) {
+        console.error("Error fetching pets:", err);
+        setError("Failed to load pets. Please try again.");
+        toast({
+          title: "Error",
+          description: "Failed to load pets. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
       }
+    },
+    [buildQuery]
+  );
 
-      const fetchedPets = snapshot.docs.map(
-        (doc) =>
-          ({
-            id: doc.id,
-            ...doc.data(),
-            createdAt: doc.data().createdAt?.toDate(),
-            updatedAt: doc.data().updatedAt?.toDate(),
-          } as Pet)
-      );
-
-      setPets(fetchedPets);
-      setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
-      setHasMore(snapshot.docs.length === PETS_PER_PAGE);
-    } catch (err) {
-      console.error("Error fetching pets:", err);
-      setError("Failed to load pets. Please try again.");
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to load pets. Please try again.",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadMorePets = async () => {
+  const loadMorePets = useCallback(async () => {
     if (!lastDoc || !hasMore) return;
 
     try {
       setLoading(true);
 
+      const baseQuery = buildQuery("");
       const petsQuery = query(
         collection(db, "pets"),
-        ...buildQuery("").queryConstraints,
+        ...(baseQuery._query?.constraints || []),
         startAfter(lastDoc)
       );
 
@@ -223,14 +228,14 @@ export function PetManagement() {
     } catch (err) {
       console.error("Error loading more pets:", err);
       toast({
-        variant: "destructive",
         title: "Error",
         description: "Failed to load more pets. Please try again.",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
-  };
+  }, [lastDoc, hasMore, buildQuery]);
 
   // Search Handler with Debounce
   const handleSearch = useCallback(
@@ -266,6 +271,7 @@ export function PetManagement() {
       toast({
         title: "Success",
         description: `Deleted ${selectedPets.size} pets successfully.`,
+        variant: "default",
       });
 
       setSelectedPets(new Set());
@@ -273,9 +279,9 @@ export function PetManagement() {
     } catch (err) {
       console.error("Error deleting pets:", err);
       toast({
-        variant: "destructive",
         title: "Error",
         description: "Failed to delete pets. Please try again.",
+        variant: "destructive",
       });
     } finally {
       setIsBatchUpdating(false);
@@ -303,6 +309,7 @@ export function PetManagement() {
       toast({
         title: "Success",
         description: `Updated status for ${selectedPets.size} pets.`,
+        variant: "default",
       });
 
       setSelectedPets(new Set());
@@ -310,9 +317,9 @@ export function PetManagement() {
     } catch (err) {
       console.error("Error updating pets:", err);
       toast({
-        variant: "destructive",
         title: "Error",
         description: "Failed to update pets. Please try again.",
+        variant: "destructive",
       });
     } finally {
       setIsBatchUpdating(false);
@@ -347,13 +354,14 @@ export function PetManagement() {
       toast({
         title: "Success",
         description: `Exported ${data.length} pets successfully.`,
+        variant: "default",
       });
     } catch (err) {
       console.error("Error exporting pets:", err);
       toast({
-        variant: "destructive",
         title: "Error",
         description: "Failed to export pets. Please try again.",
+        variant: "destructive",
       });
     } finally {
       setIsExporting(false);
@@ -385,75 +393,87 @@ export function PetManagement() {
       toast({
         title: "Success",
         description: `Imported ${importData.length} pets successfully.`,
+        variant: "default",
       });
 
       fetchPets();
     } catch (err) {
       console.error("Error importing pets:", err);
       toast({
-        variant: "destructive",
         title: "Error",
         description:
           "Failed to import pets. Please check your file format and try again.",
+        variant: "destructive",
       });
     } finally {
       setIsImporting(false);
+      if (event.target) {
+        event.target.value = "";
+      }
     }
   };
 
   // Single Item Operations
-  const handleStatusToggle = async (pet: Pet) => {
-    try {
-      const newStatus = pet.status === "Active" ? "Inactive" : "Active";
-      await updateDoc(doc(db, "pets", pet.id), {
-        status: newStatus,
-        updatedAt: serverTimestamp(),
-      });
+/*   const handleStatusToggle = useCallback(
+    async (pet: Pet) => {
+      try {
+        const newStatus = pet.status === "Active" ? "Inactive" : "Active";
+        await updateDoc(doc(db, "pets", pet.id), {
+          status: newStatus,
+          updatedAt: serverTimestamp(),
+        });
 
-      toast({
-        title: "Success",
-        description: `Updated ${pet.name}'s status to ${newStatus}`,
-      });
+        toast({
+          title: "Success",
+          description: `Updated ${pet.name}'s status to ${newStatus}`,
+          variant: "default",
+        });
 
-      fetchPets();
-    } catch (err) {
-      console.error("Error updating pet status:", err);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to update pet status. Please try again.",
-      });
-    }
-  };
+        fetchPets();
+      } catch (err) {
+        console.error("Error updating pet status:", err);
+        toast({
+          title: "Error",
+          description: "Failed to update pet status. Please try again.",
+          variant: "destructive",
+        });
+      }
+    },
+    [fetchPets]
+  ); */
 
-  const handleDelete = async (petId: string) => {
-    try {
-      await deleteDoc(doc(db, "pets", petId));
-      toast({
-        title: "Success",
-        description: "Pet deleted successfully",
-      });
-      fetchPets();
-    } catch (err) {
-      console.error("Error deleting pet:", err);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to delete pet. Please try again.",
-      });
-    }
-  };
+ /*  const handleDelete = useCallback(
+    async (petId: string) => {
+      try {
+        await deleteDoc(doc(db, "pets", petId));
+        toast({
+          title: "Success",
+          description: "Pet deleted successfully",
+          variant: "default",
+        });
+        fetchPets();
+      } catch (err) {
+        console.error("Error deleting pet:", err);
+        toast({
+          title: "Error",
+          description: "Failed to delete pet. Please try again.",
+          variant: "destructive",
+        });
+      }
+    },
+    [fetchPets]
+  ); */
 
   // Effect Hooks
   useEffect(() => {
     fetchPets();
-  }, []);
+  }, [fetchPets]);
 
   useEffect(() => {
     if (searchQuery) {
       handleSearch(searchQuery);
     }
-  }, [filters]);
+  }, [filters, handleSearch, searchQuery]);
 
   // Table Instance
   const table = useReactTable({
@@ -514,19 +534,19 @@ export function PetManagement() {
                 <DropdownMenuContent>
                   <DropdownMenuItem
                     onClick={handleExport}
-                    disabled={isExporting}
+                    disabled={isExporting || loading}
                   >
                     <Download className="mr-2 h-4 w-4" />
-                    Export
+                    {isExporting ? "Exporting..." : "Export"}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() =>
                       document.getElementById("import-file")?.click()
                     }
-                    disabled={isImporting}
+                    disabled={isImporting || loading}
                   >
                     <Upload className="mr-2 h-4 w-4" />
-                    Import
+                    {isImporting ? "Importing..." : "Import"}
                     <input
                       id="import-file"
                       type="file"
@@ -538,7 +558,7 @@ export function PetManagement() {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => setIsDeleteDialogOpen(true)}
-                    disabled={!hasSelection}
+                    disabled={!hasSelection || loading}
                     className="text-red-600"
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
@@ -593,10 +613,9 @@ export function PetManagement() {
                         onValueChange={(value) =>
                           setFilters((prev) => ({
                             ...prev,
-                            status: value.split(",").filter(Boolean) as (
-                              | "Active"
-                              | "Inactive"
-                            )[],
+                            status: value.split(",").filter(Boolean) as Array<
+                              "Active" | "Inactive"
+                            >,
                           }))
                         }
                       >
@@ -616,7 +635,7 @@ export function PetManagement() {
                         onValueChange={(value) =>
                           setFilters((prev) => ({
                             ...prev,
-                            matchRateThreshold: parseInt(value),
+                            matchRateThreshold: Number(value),
                           }))
                         }
                       >

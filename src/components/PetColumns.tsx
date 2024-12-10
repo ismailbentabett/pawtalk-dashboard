@@ -14,6 +14,16 @@ import {
 import { Badge } from "./ui/badge";
 import { Pet } from "@/types/pet";
 
+const handleStatusToggle = (pet: Pet) => {
+  // Implement the status toggle logic here
+  console.log(`Toggling status for pet with ID: ${pet.id}`);
+};
+
+const handleDelete = (petId: string) => {
+  // Implement the delete logic here
+  console.log(`Deleting pet with ID: ${petId}`);
+};
+
 export const columns: ColumnDef<Pet>[] = [
   {
     id: "select",
@@ -70,7 +80,9 @@ export const columns: ColumnDef<Pet>[] = [
     ),
     cell: ({ row }) => (
       <div className="flex items-center">
-        <span className="capitalize">{row.getValue("species") || "Unknown"}</span>
+        <span className="capitalize">
+          {row.getValue("species") || "Unknown"}
+        </span>
         {row.original.vaccinated && (
           <Badge variant="secondary" className="ml-2">
             Vaccinated
@@ -134,7 +146,7 @@ export const columns: ColumnDef<Pet>[] = [
       const status = row.getValue("status") as string;
       return (
         <Badge
-          variant={status === "Active" ? "success" : "secondary"}
+          variant={status === "Active" ? "default" : "secondary"}
           className={
             status === "Active"
               ? "bg-green-100 text-green-800"
@@ -222,16 +234,16 @@ export const columns: ColumnDef<Pet>[] = [
     cell: ({ row }) => {
       const lastActivity = row.getValue("lastActivity");
       if (!lastActivity) return <div>No activity</div>;
-      
+
       try {
-        const date = new Date(lastActivity);
+        const date = new Date(lastActivity as string | number | Date);
         const timeAgo = getTimeAgo(date);
         return (
           <div className="flex items-center">
             <span title={date.toLocaleString()}>{timeAgo}</span>
           </div>
         );
-      } catch (error) {
+      } catch {
         return <div>Invalid date</div>;
       }
     },
@@ -271,7 +283,7 @@ export const columns: ColumnDef<Pet>[] = [
     cell: ({ row }) => {
       const pet = row.original;
       if (!pet.id) return null;
-      
+
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -283,7 +295,7 @@ export const columns: ColumnDef<Pet>[] = [
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
             <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(pet.id || '')}
+              onClick={() => navigator.clipboard.writeText(pet.id || "")}
             >
               Copy pet ID
             </DropdownMenuItem>
@@ -331,7 +343,7 @@ const getTimeAgo = (date: Date) => {
       }
     }
     return "Just now";
-  } catch (error) {
+  } catch {
     return "Invalid date";
   }
 };
