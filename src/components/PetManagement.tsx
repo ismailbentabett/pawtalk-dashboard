@@ -197,11 +197,7 @@ export function PetManagement() {
       setLoading(true);
 
       const baseQuery = buildQuery("");
-      const petsQuery = query(
-        collection(db, "pets"),
-        ...(baseQuery._query?.constraints || []),
-        startAfter(lastDoc)
-      );
+      const petsQuery = query(baseQuery, startAfter(lastDoc));
 
       const snapshot = await getDocs(petsQuery);
 
