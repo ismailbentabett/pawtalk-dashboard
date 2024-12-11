@@ -16,7 +16,9 @@ import {
 import { format } from "date-fns";
 import { db, auth } from "../lib/firebase";
 import { debounce } from "lodash";
+import Avatar from "react-avatar";
 
+// Constants
 const CLOUDINARY_CLOUD_NAME = "dkdscxzz7";
 const CLOUDINARY_UPLOAD_PRESET = "pawtalk";
 const GIPHY_API_KEY = import.meta.env.VITE_GIPHY_API_KEY;
@@ -65,7 +67,7 @@ interface Conversation {
   typing: Record<string, boolean>;
 }
 
-// Cloudinary upload helper
+// Cloudinary upload utility
 const uploadToCloudinary = async (file: File): Promise<string> => {
   try {
     const formData = new FormData();
@@ -93,6 +95,7 @@ const uploadToCloudinary = async (file: File): Promise<string> => {
 };
 
 export function CommunicationCenter() {
+  // State management
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] =
     useState<Conversation | null>(null);
@@ -109,6 +112,7 @@ export function CommunicationCenter() {
   const [gifs, setGifs] = useState<GiphyGif[]>([]);
   const [loadingGifs, setLoadingGifs] = useState(false);
 
+  // Refs
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const currentUser = auth.currentUser;
   const typingTimeoutRef = useRef<number>();
@@ -155,7 +159,7 @@ export function CommunicationCenter() {
           ...prev,
           [petId]: {
             name: data.name,
-            avatar: data.images?.main || "/placeholder.png",
+            avatar: data.images?.main || "",
             bio: data.bio,
           },
         }));
@@ -195,15 +199,38 @@ export function CommunicationCenter() {
             );
           }
         });
+
+        // Auto-scroll to bottom on new messages
+        if (scrollAreaRef.current) {
+          scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+        }
       },
       (error) => {
         console.error("Messages subscription error:", error);
       }
     );
 
-    return () => unsubscribe();
+    // Subscribe to typing indicators
+    const typingUnsubscribe = onSnapshot(
+      doc(db, "conversations", selectedConversation.id),
+      (doc) => {
+        const data = doc.data();
+        if (data?.typing) {
+          const othersTyping = Object.entries(data.typing).some(
+            ([uid, isTyping]) => uid !== currentUser.uid && isTyping
+          );
+          setOtherUserTyping(othersTyping);
+        }
+      }
+    );
+
+    return () => {
+      unsubscribe();
+      typingUnsubscribe();
+    };
   }, [selectedConversation, currentUser?.uid]);
 
+  // Message sending
   const sendMessage = async (
     content: string,
     type: "text" | "image" | "gif" = "text",
@@ -227,17 +254,23 @@ export function CommunicationCenter() {
 
       await addDoc(collection(db, "messages"), messageData);
       await updateConversationTimestamp();
-      scrollAreaRef.current?.scrollTo({
-        top: scrollAreaRef.current.scrollHeight,
-        behavior: "smooth",
-      });
+
+      // Clear typing indicator after sending
+      await updateTypingStatus(false);
+
+      // Scroll to bottom
+      if (scrollAreaRef.current) {
+        scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+      }
     } catch (error) {
       console.error("Error sending message:", error);
       alert("Failed to send message");
     }
   };
 
-  const handleSend = async () => {
+  // Message handlers
+  const handleSend = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (!message.trim()) return;
     const messageText = message.trim();
     setMessage("");
@@ -245,6 +278,17 @@ export function CommunicationCenter() {
   };
 
   const handleImageSelect = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      alert("Please select an image file");
+      return;
+    }
+
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      alert("Image size must be less than 5MB");
+      return;
+    }
+
     setUploadingMedia(true);
     try {
       const cloudinaryUrl = await uploadToCloudinary(file);
@@ -258,9 +302,13 @@ export function CommunicationCenter() {
     }
   };
 
-  const handleGifSelect = async (gif: { url: string; preview: string }) => {
+  const handleGifSelect = async (gif: GiphyGif) => {
     try {
-      await sendMessage(gif.preview, "gif", gif.url);
+      await sendMessage(
+        gif.images.fixed_width.url,
+        "gif",
+        gif.images.original.url
+      );
     } catch (error) {
       console.error("Error sending GIF:", error);
       alert("Failed to send GIF");
@@ -298,7 +346,7 @@ export function CommunicationCenter() {
     }
 
     updateTypingStatus(true);
-    typingTimeoutRef.current = setTimeout(() => {
+    typingTimeoutRef.current = window.setTimeout(() => {
       updateTypingStatus(false);
     }, 2000);
   };
@@ -317,52 +365,7 @@ export function CommunicationCenter() {
     }
   }, [selectedConversation]);
 
-  // Message renderer
-  const renderMessage = (message: Message) => {
-    const isUserMessage = message.senderId === currentUser?.uid;
-    const messageTime = format(message.createdAt, "HH:mm");
-
-    return (
-      <div
-        key={message.id}
-        className={`flex ${
-          isUserMessage ? "justify-end" : "justify-start"
-        } mb-4`}
-      >
-        {!isUserMessage && petDetails[selectedConversation?.petId || ""] && (
-          <div className="w-8 h-8 rounded-full overflow-hidden mr-2">
-            <img
-              src={petDetails[selectedConversation?.petId || ""].avatar}
-              alt={petDetails[selectedConversation?.petId || ""].name}
-              className="w-full h-full object-cover"
-            />
-          </div>
-        )}
-        <div
-          className={`max-w-xs lg:max-w-md xl:max-w-lg rounded-lg p-3 ${
-            isUserMessage ? "bg-blue-500 text-white" : "bg-gray-200"
-          }`}
-        >
-          {message.type === "text" ? (
-            <p>{message.content}</p>
-          ) : (
-            <img
-              src={message.type === "gif" ? message.gifUrl : message.content}
-              alt="Message content"
-              className="w-full h-auto rounded"
-            />
-          )}
-          <div className="flex justify-end items-center mt-1 space-x-2">
-            <span className="text-xs opacity-70">{messageTime}</span>
-            {isUserMessage && message.read && (
-              <span className="text-xs">Read</span>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
+  // GIF search
   const searchGifs = async (query: string) => {
     setLoadingGifs(true);
     try {
@@ -393,10 +396,93 @@ export function CommunicationCenter() {
     []
   );
 
+  // Initialize GIFs
   useEffect(() => {
     searchGifs("");
+    return () => {
+      debouncedSearch.cancel();
+    };
   }, []);
 
+  // Message renderer
+  const renderMessage = (message: Message) => {
+    const isCurrentUser = message.senderId === currentUser?.uid;
+    const messageTime = format(message.createdAt, "HH:mm");
+
+    const avatarName = isCurrentUser
+      ? currentUser?.displayName || "You"
+      : petDetails[selectedConversation?.petId || ""]?.name || "Pet";
+
+    const avatarUrl = isCurrentUser
+      ? currentUser?.photoURL || ""
+      : petDetails[selectedConversation?.petId || ""]?.avatar || "";
+
+    return (
+      <div
+        key={message.id}
+        className={`flex ${
+          isCurrentUser ? "flex-row-reverse" : "flex-row"
+        } mb-4 items-end`}
+      >
+        <Avatar
+          name={avatarName}
+          src={avatarUrl}
+          size="32"
+          round={true}
+          className="mx-2"
+        />
+
+        <div
+          className={`max-w-xs lg:max-w-md xl:max-w-lg rounded-lg p-3 ${
+            isCurrentUser
+              ? "bg-blue-500 text-white rounded-tr-none"
+              : "bg-gray-200 text-gray-800 rounded-tl-none"
+          }`}
+        >
+          {message.type === "text" ? (
+            <p className="whitespace-pre-wrap break-words">{message.content}</p>
+          ) : message.type === "gif" ? (
+            <img
+              src={message.gifUrl || message.content}
+              alt="GIF"
+              className="w-full h-auto rounded"
+            />
+          ) : (
+            <img
+              src={message.content}
+              alt="Image"
+              className="w-full h-auto rounded"
+            />
+          )}
+
+          <div
+            className={`flex items-center mt-1 space-x-1 ${
+              isCurrentUser ? "justify-start" : "justify-end"
+            }`}
+          >
+            <span
+              className={`text-xs ${
+                isCurrentUser ? "text-blue-100" : "text-gray-500"
+              }`}
+            >
+              {messageTime}
+            </span>
+            {isCurrentUser && message.read && (
+              <span
+                className={`text-xs ${
+                  isCurrentUser ? "text-blue-100" : "text-gray-500"
+                }`}
+              >
+                • Read
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Loading state
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-full">
@@ -407,6 +493,7 @@ export function CommunicationCenter() {
 
   return (
     <div className="flex h-screen bg-gray-100">
+      {/* Conversation List */}
       <div className="w-1/3 border-r bg-white overflow-auto">
         {conversations.map((conversation) => (
           <div
@@ -417,13 +504,12 @@ export function CommunicationCenter() {
             onClick={() => setSelectedConversation(conversation)}
           >
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-full overflow-hidden">
-                <img
-                  src={petDetails[conversation.petId]?.avatar}
-                  alt={petDetails[conversation.petId]?.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
+              <Avatar
+                name={petDetails[conversation.petId]?.name || "Unknown Pet"}
+                src={petDetails[conversation.petId]?.avatar || ""}
+                size="40"
+                round={true}
+              />
               <div>
                 <p className="font-semibold">
                   {petDetails[conversation.petId]?.name || "Unknown Pet"}
@@ -441,48 +527,67 @@ export function CommunicationCenter() {
           </div>
         ))}
       </div>
+
+      {/* Chat Area */}
       <div className="flex-1 flex flex-col bg-white">
         {selectedConversation ? (
           <>
-            <div className="flex-shrink-0 p-4 border-b">
+            {/* Chat Header */}
+            <div className="flex-shrink-0 p-4 border-b bg-white shadow-sm">
               <div className="flex items-center">
-                <div className="w-10 h-10 rounded-full overflow-hidden mr-2">
-                  <img
-                    src={petDetails[selectedConversation.petId]?.avatar}
-                    alt={petDetails[selectedConversation.petId]?.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
+                <Avatar
+                  name={
+                    petDetails[selectedConversation.petId]?.name ||
+                    "Unknown Pet"
+                  }
+                  src={petDetails[selectedConversation.petId]?.avatar || ""}
+                  size="40"
+                  round={true}
+                  className="mr-3"
+                />
                 <div>
                   <h2 className="text-xl font-bold">
-                    {petDetails[selectedConversation.petId]?.name}
+                    {petDetails[selectedConversation.petId]?.name ||
+                      "Unknown Pet"}
                   </h2>
                   {otherUserTyping && (
-                    <p className="text-sm text-gray-500">typing...</p>
+                    <p className="text-sm text-gray-500 animate-pulse">
+                      typing...
+                    </p>
                   )}
                 </div>
               </div>
             </div>
-            <div className="flex-grow overflow-hidden" ref={scrollAreaRef}>
-              <div className="h-full overflow-y-auto p-4">
+
+            {/* Messages Area */}
+            <div className="flex-grow overflow-hidden">
+              <div
+                className="h-full overflow-y-auto p-4 space-y-4"
+                ref={scrollAreaRef}
+              >
                 {messages.map(renderMessage)}
               </div>
             </div>
+
+            {/* Upload Progress */}
             {uploadingMedia && (
               <div className="bg-blue-500 text-white p-2 text-center">
                 <div className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
                 Sending media...
               </div>
             )}
-            <div className="p-4 border-t">
+
+            {/* Message Input */}
+            <form onSubmit={handleSend} className="p-4 border-t bg-white">
               <div className="flex items-center space-x-2">
                 <button
-                  className="p-2 rounded-full hover:bg-gray-200"
+                  type="button"
+                  className="p-2 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                   onClick={() => setIsMediaDialogOpen(true)}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6"
+                    className="h-6 w-6 text-gray-600"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -503,9 +608,9 @@ export function CommunicationCenter() {
                   className="flex-grow p-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <button
-                  onClick={handleSend}
+                  type="submit"
                   disabled={!message.trim()}
-                  className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+                  className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -523,7 +628,7 @@ export function CommunicationCenter() {
                   </svg>
                 </button>
               </div>
-            </div>
+            </form>
           </>
         ) : (
           <div className="flex items-center justify-center h-full text-gray-500">
@@ -532,20 +637,24 @@ export function CommunicationCenter() {
         )}
       </div>
 
+      {/* Media Dialog */}
       {isMediaDialogOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg w-full max-w-md">
             <div className="p-4 border-b">
               <h3 className="text-lg font-semibold">Send Media</h3>
             </div>
-            <div className="p-4">
-              <div className="mb-4">
+
+            <div className="p-4 space-y-4">
+              {/* Emoji Section */}
+              <div>
                 <h4 className="font-medium mb-2">Emoji</h4>
                 <div className="grid grid-cols-8 gap-2">
                   {["😀", "😃", "😄", "😁", "😅", "😂", "🤣", "😊"].map(
                     (emoji) => (
                       <button
                         key={emoji}
+                        type="button"
                         className="text-2xl hover:bg-gray-100 rounded p-1"
                         onClick={() => {
                           setMessage((prev) => prev + emoji);
@@ -558,7 +667,9 @@ export function CommunicationCenter() {
                   )}
                 </div>
               </div>
-              <div className="mb-4">
+
+              {/* GIF Section */}
+              <div>
                 <h4 className="font-medium mb-2">GIF</h4>
                 <input
                   type="text"
@@ -568,7 +679,7 @@ export function CommunicationCenter() {
                     setSearchQuery(e.target.value);
                     debouncedSearch(e.target.value);
                   }}
-                  className="w-full p-2 border rounded mb-2"
+                  className="w-full p-2 border rounded mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 {loadingGifs ? (
                   <div className="flex justify-center items-center h-40">
@@ -579,13 +690,9 @@ export function CommunicationCenter() {
                     {gifs.map((gif) => (
                       <button
                         key={gif.id}
+                        type="button"
                         className="p-1 hover:bg-gray-100 rounded"
-                        onClick={() =>
-                          handleGifSelect({
-                            url: gif.images.original.url,
-                            preview: gif.images.fixed_width.url,
-                          })
-                        }
+                        onClick={() => handleGifSelect(gif)}
                       >
                         <img
                           src={gif.images.fixed_width.url}
@@ -597,6 +704,8 @@ export function CommunicationCenter() {
                   </div>
                 )}
               </div>
+
+              {/* Image Upload Section */}
               <div>
                 <h4 className="font-medium mb-2">Image</h4>
                 <input
@@ -608,14 +717,17 @@ export function CommunicationCenter() {
                       handleImageSelect(file);
                     }
                   }}
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
+
+            {/* Dialog Footer */}
             <div className="p-4 border-t flex justify-end">
               <button
+                type="button"
                 onClick={() => setIsMediaDialogOpen(false)}
-                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
+                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 Cancel
               </button>
