@@ -1,6 +1,6 @@
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ToastProvider } from "@radix-ui/react-toast";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, Outlet } from "react-router-dom";
 import { Toaster } from "./components/ui/toaster";
 import { PROTECTED_ROUTES, PUBLIC_ROUTES } from "./constants/routes";
 import DashboardLayout from "./layouts/DashboardLayout";
@@ -14,10 +14,19 @@ import PetDetailsPage from "./pages/PetDetailsPage";
 import PetsPage from "./pages/PetsPage";
 import SettingsPage from "./pages/SettingsPage";
 
+function ProtectedRoute() {
+  const { user, loading } = useAuth();
+
+  if (loading) return <div>Loading...</div>; // Optional: Add a spinner or placeholder
+
+  if (!user) {
+    return <Navigate to={PUBLIC_ROUTES.LOGIN} replace />;
+  }
+
+  return <Outlet />;
+}
 
 function App() {
-
-
   return (
     <BrowserRouter>
       <ToastProvider>
@@ -26,19 +35,18 @@ function App() {
             {/* Public Routes */}
             <Route path={PUBLIC_ROUTES.LOGIN} element={<LoginPage />} />
 
-            {/* Protected Dashboard Routes */}
-            <Route
-              path={PROTECTED_ROUTES.DASHBOARD}
-              element={<DashboardLayout />}
-            >
-              <Route index element={<DashboardPage />} />
-              <Route path="analytics" element={<AnalyticsPage />} />
-              <Route path="pets" element={<PetsPage />} />
-              <Route path="pets/:id" element={<PetDetailsPage />} />
-              <Route path="messages" element={<MessagesPage />} />
-              <Route path="matches" element={<MatchesPage />} />
-              <Route path="appointments" element={<AppointmentsPage />} />
-              <Route path="settings" element={<SettingsPage />} />
+            {/* Protected Routes */}
+            <Route element={<ProtectedRoute />}>
+              <Route path={PROTECTED_ROUTES.DASHBOARD} element={<DashboardLayout />}>
+                <Route index element={<DashboardPage />} />
+                <Route path="analytics" element={<AnalyticsPage />} />
+                <Route path="pets" element={<PetsPage />} />
+                <Route path="pets/:id" element={<PetDetailsPage />} />
+                <Route path="messages" element={<MessagesPage />} />
+                <Route path="matches" element={<MatchesPage />} />
+                <Route path="appointments" element={<AppointmentsPage />} />
+                <Route path="settings" element={<SettingsPage />} />
+              </Route>
             </Route>
 
             {/* Redirect Routes */}

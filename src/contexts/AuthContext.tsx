@@ -31,9 +31,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const useAuth = () => {
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
@@ -46,8 +46,9 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -58,8 +59,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (!userDoc.exists()) return null;
         const data = userDoc.data() as UserData;
         return { ...data, id: userDoc.id };
-      } catch (error) {
-        console.error("Error fetching user data:", error);
+      } catch (err) {
+        console.error("Error fetching user data:", err);
         return null;
       }
     },
@@ -79,8 +80,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           updatedAt: serverTimestamp(),
           lastLogin: serverTimestamp(),
         });
-      } catch (error) {
-        console.error("Error creating user document:", error);
+      } catch (err) {
+        console.error("Error creating user document:", err);
         throw new Error("Failed to create user profile");
       }
     },
@@ -89,21 +90,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signIn = useCallback(
     async (email: string, password: string) => {
+      setLoading(true);
+      setError(null);
       try {
-        setLoading(true);
-        setError(null);
         const userCredential = await signInWithEmailAndPassword(
           auth,
           email,
           password
         );
-        const userData = await fetchUserData(userCredential.user.uid);
-        if (!userData) throw new Error("User data not found");
+        const fetchedUserData = await fetchUserData(userCredential.user.uid);
+        if (!fetchedUserData) throw new Error("User data not found");
         setUser(userCredential.user);
-        setUserData(userData);
-      } catch (error) {
+        setUserData(fetchedUserData);
+      } catch (err) {
+        console.error("Sign in error:", err);
         setError("Authentication failed. Please check your credentials.");
-        throw error;
+        throw err;
       } finally {
         setLoading(false);
       }
@@ -113,9 +115,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signUp = useCallback(
     async (email: string, password: string, name: string) => {
+      setLoading(true);
+      setError(null);
       try {
-        setLoading(true);
-        setError(null);
         const userCredential = await createUserWithEmailAndPassword(
           auth,
           email,
@@ -123,13 +125,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         );
         await sendEmailVerification(userCredential.user);
         await createUserDocument(userCredential.user.uid, email, name);
-        const userData = await fetchUserData(userCredential.user.uid);
-        if (!userData) throw new Error("Failed to create user profile");
+        const fetchedUserData = await fetchUserData(userCredential.user.uid);
+        if (!fetchedUserData) throw new Error("Failed to create user profile");
         setUser(userCredential.user);
-        setUserData(userData);
-      } catch (error) {
+        setUserData(fetchedUserData);
+      } catch (err) {
+        console.error("Sign up error:", err);
         setError("Failed to create account. Please try again.");
-        throw error;
+        throw err;
       } finally {
         setLoading(false);
       }
@@ -143,9 +146,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(null);
       setUserData(null);
       navigate("/login");
-    } catch (error) {
+    } catch (err) {
+      console.error("Sign out error:", err);
       setError("Failed to sign out. Please try again.");
-      throw error;
+      throw err;
     }
   }, [navigate]);
 
@@ -157,12 +161,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   );
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    // This listener will automatically run on page load and whenever
+    // the auth state changes, keeping the user logged in if persistence is set.
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setLoading(true);
-      if (user) {
-        const userData = await fetchUserData(user.uid);
-        setUser(user);
-        setUserData(userData);
+      if (currentUser) {
+        const fetchedUserData = await fetchUserData(currentUser.uid);
+        setUser(currentUser);
+        setUserData(fetchedUserData);
       } else {
         setUser(null);
         setUserData(null);
@@ -174,6 +180,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [fetchUserData]);
 
   useEffect(() => {
+    // Handle route redirects
     if (!loading) {
       const isPublicRoute = ["/login", "/signup", "/forgot-password"].includes(
         location.pathname
@@ -188,7 +195,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [user, loading, location, navigate]);
 
-  const value = {
+  const value: AuthContextType = {
     user,
     userData,
     loading,
