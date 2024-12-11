@@ -1,9 +1,10 @@
 import { Button } from "@/components/ui/button";
-import { Link, Outlet } from "react-router-dom";
-
-import { Bell, Search } from "lucide-react";
-
+import { Link, Outlet, useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import {
+  Bell,
+  Search,
   Calendar,
   Heart,
   Home,
@@ -11,10 +12,20 @@ import {
   PieChart,
   Settings,
   Users,
+  LogOut,
+  Loader2,
 } from "lucide-react";
-import { useLocation } from "react-router-dom";
 import { cn } from "../lib/utils";
 import { Input } from "@/components/ui/input";
+import { useState } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { PUBLIC_ROUTES } from "@/constants/routes";
 
 const sidebarItems = [
   { name: "Dashboard", icon: Home, href: "/dashboard" },
@@ -53,6 +64,32 @@ function Sidebar() {
 }
 
 function Header() {
+  const { userData, signOut } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      await signOut();
+      toast({
+        title: "Logged out successfully",
+        description: "Come back soon!",
+        className: "bg-green-50 border-green-200 text-green-800",
+      });
+      navigate(PUBLIC_ROUTES.LOGIN, { replace: true });
+    } catch (error) {
+      toast({
+        title: "Logout failed",
+        description: "Please try again",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
   return (
     <header className="flex items-center justify-between px-6 py-4 bg-white border-b">
       <div className="flex items-center">
@@ -67,15 +104,76 @@ function Header() {
           <Bell className="h-5 w-5" />
           <span className="sr-only">Notifications</span>
         </Button>
-        <Button variant="ghost" size="sm">
-          John Doe
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex items-center space-x-2"
+            >
+              <span>{userData?.name || "User"}</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem
+              onClick={() => navigate("/dashboard/profile")}
+              className="cursor-pointer"
+            >
+              Profile
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => navigate("/dashboard/settings")}
+              className="cursor-pointer"
+            >
+              Settings
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={handleLogout}
+              className="cursor-pointer text-red-600 focus:text-red-600"
+              disabled={isLoggingOut}
+            >
+              {isLoggingOut ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <LogOut className="mr-2 h-4 w-4" />
+              )}
+              {isLoggingOut ? "Logging out..." : "Logout"}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );
 }
 
 export default function DashboardLayout() {
+  const { signOut } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      await signOut();
+      toast({
+        title: "Logged out successfully",
+        description: "Come back soon!",
+        className: "bg-green-50 border-green-200 text-green-800",
+      });
+      navigate(PUBLIC_ROUTES.LOGIN, { replace: true });
+    } catch (error) {
+      toast({
+        title: "Logout failed",
+        description: "Please try again",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
@@ -85,9 +183,24 @@ export default function DashboardLayout() {
           <Outlet />
         </main>
         <footer className="bg-white border-t p-4 text-center">
-          <Link to="/login">
-            <Button variant="link">Logout</Button>
-          </Link>
+          <Button
+            variant="link"
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            className="text-gray-600 hover:text-gray-900"
+          >
+            {isLoggingOut ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Logging out...
+              </>
+            ) : (
+              <>
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </>
+            )}
+          </Button>
         </footer>
       </div>
     </div>

@@ -1,308 +1,203 @@
-import { auth, db } from "@/lib/firebase";
-import { UserData, UserRole } from "@/types/Auth";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import {
-  onAuthStateChanged,
+  User,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  User,
-  signOut as firebaseSignOut,
+  signOut,
+  onAuthStateChanged,
   sendEmailVerification,
 } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
-import {
-  createContext,
-  ReactNode,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { auth, db } from "@/lib/firebase";
+import { UserData, UserRole } from "@/types/Auth";
 
-interface AuthState {
+interface AuthContextType {
   user: User | null;
   userData: UserData | null;
   loading: boolean;
   error: string | null;
-}
-
-interface SignUpData {
-  email: string;
-  password: string;
-  name: string;
-}
-
-interface AuthContextType extends AuthState {
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (data: SignUpData) => Promise<void>;
+  signUp: (email: string, password: string, name: string) => Promise<void>;
   signOut: () => Promise<void>;
   hasRequiredRole: (requiredRoles: UserRole[]) => boolean;
 }
 
-const initialState: AuthState = {
-  user: null,
-  userData: null,
-  loading: true,
-  error: null,
-};
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-async function fetchUserData(uid: string): Promise<UserData | null> {
-  try {
-    const userDoc = await getDoc(doc(db, "users", uid));
-    if (!userDoc.exists()) return null;
-
-    const data = userDoc.data();
-    return {
-      id: userDoc.id,
-      email: data.email,
-      role: data.role,
-      name: data.name,
-      createdAt: data.createdAt.toDate(),
-    };
-  } catch (error) {
-    console.error("Error fetching user data:", error);
-    return null;
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
   }
+  return context;
+};
+
+interface AuthProviderProps {
+  children: React.ReactNode;
 }
 
-async function createUserDocument(
-  uid: string,
-  userData: SignUpData
-): Promise<void> {
-  try {
-    await setDoc(doc(db, "users", uid), {
-      email: userData.email,
-      name: userData.name,
-      role: "user" as UserRole,
-      isActive: true,
-      emailVerified: false,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      lastLogin: serverTimestamp(),
-      settings: {
-        notifications: true,
-        emailUpdates: true,
-      },
-    });
-  } catch (error) {
-    console.error("Error creating user document:", error);
-    throw new Error("Failed to create user profile");
-  }
-}
-
-const PUBLIC_PATHS = ["/login", "/signup", "/forgot-password"];
-const PROTECTED_PATHS = ["/dashboard", "/settings", "/profile"];
-
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AuthState>(initialState);
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
-  const updateState = useCallback((updates: Partial<AuthState>) => {
-    setState((current) => ({ ...current, ...updates }));
-  }, []);
+  const fetchUserData = useCallback(
+    async (uid: string): Promise<UserData | null> => {
+      try {
+        const userDoc = await getDoc(doc(db, "users", uid));
+        if (!userDoc.exists()) return null;
+        const data = userDoc.data() as UserData;
+        return { ...data, id: userDoc.id };
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        return null;
+      }
+    },
+    []
+  );
+
+  const createUserDocument = useCallback(
+    async (uid: string, email: string, name: string): Promise<void> => {
+      try {
+        await setDoc(doc(db, "users", uid), {
+          email,
+          name,
+          role: "user" as UserRole,
+          isActive: true,
+          emailVerified: false,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          lastLogin: serverTimestamp(),
+        });
+      } catch (error) {
+        console.error("Error creating user document:", error);
+        throw new Error("Failed to create user profile");
+      }
+    },
+    []
+  );
 
   const signIn = useCallback(
     async (email: string, password: string) => {
       try {
-        updateState({ loading: true, error: null });
-        const credential = await signInWithEmailAndPassword(
+        setLoading(true);
+        setError(null);
+        const userCredential = await signInWithEmailAndPassword(
           auth,
           email,
           password
         );
-        const userData = await fetchUserData(credential.user.uid);
-
-        if (!userData) {
-          throw new Error("No user data found");
-        }
-
-        updateState({
-          user: credential.user,
-          userData,
-          loading: false,
-          error: null,
-        });
-
-        // After successful login, redirect to the intended URL or dashboard
-        const params = new URLSearchParams(location.search);
-        const returnUrl = params.get("returnUrl");
-        navigate(returnUrl || "/dashboard", { replace: true });
+        const userData = await fetchUserData(userCredential.user.uid);
+        if (!userData) throw new Error("User data not found");
+        setUser(userCredential.user);
+        setUserData(userData);
       } catch (error) {
-        updateState({
-          error: "Authentication failed",
-          loading: false,
-        });
+        setError("Authentication failed. Please check your credentials.");
         throw error;
+      } finally {
+        setLoading(false);
       }
     },
-    [location.search, navigate]
+    [fetchUserData]
   );
 
   const signUp = useCallback(
-    async (data: SignUpData) => {
+    async (email: string, password: string, name: string) => {
       try {
-        updateState({ loading: true, error: null });
-
-        const credential = await createUserWithEmailAndPassword(
+        setLoading(true);
+        setError(null);
+        const userCredential = await createUserWithEmailAndPassword(
           auth,
-          data.email,
-          data.password
+          email,
+          password
         );
-
-        await sendEmailVerification(credential.user);
-        await createUserDocument(credential.user.uid, data);
-
-        const userData = await fetchUserData(credential.user.uid);
-
-        if (!userData) {
-          throw new Error("Failed to create user profile");
-        }
-
-        updateState({
-          user: credential.user,
-          userData,
-          loading: false,
-          error: null,
-        });
-
-        navigate("/dashboard", { replace: true });
-      } catch (error: unknown | Error) {
-        let errorMessage = "Failed to create account";
-
-        const firebaseError = error as { code: string };
-        switch (firebaseError.code) {
-          case "auth/email-already-in-use":
-            errorMessage = "Email is already registered";
-            break;
-          case "auth/invalid-email":
-            errorMessage = "Invalid email address";
-            break;
-          case "auth/weak-password":
-            errorMessage = "Password is too weak";
-            break;
-          default:
-            errorMessage = "An error occurred during signup";
-        }
-
-        updateState({
-          error: errorMessage,
-          loading: false,
-        });
+        await sendEmailVerification(userCredential.user);
+        await createUserDocument(userCredential.user.uid, email, name);
+        const userData = await fetchUserData(userCredential.user.uid);
+        if (!userData) throw new Error("Failed to create user profile");
+        setUser(userCredential.user);
+        setUserData(userData);
+      } catch (error) {
+        setError("Failed to create account. Please try again.");
         throw error;
+      } finally {
+        setLoading(false);
       }
     },
-    [navigate]
+    [createUserDocument, fetchUserData]
   );
 
-  const signOut = useCallback(async () => {
+  const signOutUser = useCallback(async () => {
     try {
-      await firebaseSignOut(auth);
-      setState(initialState);
-      navigate("/login", { replace: true });
+      await signOut(auth);
+      setUser(null);
+      setUserData(null);
+      navigate("/login");
     } catch (error) {
-      console.error("Sign out error:", error);
+      setError("Failed to sign out. Please try again.");
       throw error;
     }
   }, [navigate]);
 
   const hasRequiredRole = useCallback(
     (requiredRoles: UserRole[]): boolean => {
-      const { userData } = state;
-      if (!userData?.role) return false;
-      return requiredRoles.includes(userData.role);
+      return userData?.role ? requiredRoles.includes(userData.role) : false;
     },
-    [state.userData?.role]
+    [userData]
   );
-
-  // Route guard effect
-  useEffect(() => {
-    if (state.loading) return;
-
-    const currentPath = location.pathname;
-    const isPublicPath = PUBLIC_PATHS.some((path) =>
-      currentPath.startsWith(path)
-    );
-    const isProtectedPath = PROTECTED_PATHS.some((path) =>
-      currentPath.startsWith(path)
-    );
-
-    if (state.user) {
-      // If user is logged in and tries to access public routes
-      if (isPublicPath) {
-        navigate("/dashboard", { replace: true });
-      }
-    } else {
-      // If user is not logged in and tries to access protected routes
-      if (isProtectedPath) {
-        const returnUrl = encodeURIComponent(currentPath);
-        navigate(`/login?returnUrl=${returnUrl}`, { replace: true });
-      }
-    }
-  }, [state.user, state.loading, location.pathname, navigate]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      try {
-        if (user) {
-          const userData = await fetchUserData(user.uid);
-          if (userData) {
-            updateState({
-              user,
-              userData,
-              loading: false,
-              error: null,
-            });
-          } else {
-            await firebaseSignOut(auth);
-            updateState({
-              user: null,
-              userData: null,
-              loading: false,
-              error: "User data not found",
-            });
-          }
-        } else {
-          updateState({
-            user: null,
-            userData: null,
-            loading: false,
-            error: null,
-          });
-        }
-      } catch (error) {
-        console.error("Auth state change error:", error);
-        updateState({
-          error: "Failed to load user data",
-          loading: false,
-        });
+      setLoading(true);
+      if (user) {
+        const userData = await fetchUserData(user.uid);
+        setUser(user);
+        setUserData(userData);
+      } else {
+        setUser(null);
+        setUserData(null);
       }
+      setLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [fetchUserData]);
 
-  return (
-    <AuthContext.Provider
-      value={{
-        ...state,
-        signIn,
-        signUp,
-        signOut,
-        hasRequiredRole,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
-}
+  useEffect(() => {
+    if (!loading) {
+      const isPublicRoute = ["/login", "/signup", "/forgot-password"].includes(
+        location.pathname
+      );
+      const isProtectedRoute = location.pathname.startsWith("/dashboard");
 
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
-}
+      if (user && isPublicRoute) {
+        navigate("/dashboard");
+      } else if (!user && isProtectedRoute) {
+        navigate("/login", { state: { from: location } });
+      }
+    }
+  }, [user, loading, location, navigate]);
+
+  const value = {
+    user,
+    userData,
+    loading,
+    error,
+    signIn,
+    signUp,
+    signOut: signOutUser,
+    hasRequiredRole,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
