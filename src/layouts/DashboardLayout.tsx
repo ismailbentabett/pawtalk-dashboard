@@ -11,9 +11,9 @@ import {
   MessageSquare,
   PieChart,
   Settings,
-  Users,
   LogOut,
   Loader2,
+  Dog,
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Input } from "@/components/ui/input";
@@ -30,7 +30,7 @@ import { PUBLIC_ROUTES } from "@/constants/routes";
 const sidebarItems = [
   { name: "Dashboard", icon: Home, href: "/dashboard" },
   { name: "Analytics", icon: PieChart, href: "/dashboard/analytics" },
-  { name: "Pets", icon: Users, href: "/dashboard/pets" },
+  { name: "Pets", icon: Dog, href: "/dashboard/pets" },
   { name: "Messages", icon: MessageSquare, href: "/dashboard/messages" },
   { name: "Matches", icon: Heart, href: "/dashboard/matches" },
   { name: "Appointments", icon: Calendar, href: "/dashboard/appointments" },
