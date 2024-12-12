@@ -14,7 +14,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { format } from "date-fns";
-import { db, auth } from "../lib/firebase";
+import { db } from "../lib/firebase";
 import { debounce } from "lodash";
 import Avatar from "react-avatar";
 
@@ -36,10 +36,18 @@ interface Message {
   gifUrl?: string;
 }
 
+interface UserDetails {
+  displayName: string;
+  email: string;
+  avatar?: string;
+}
+
 interface PetDetails {
   name: string;
-  avatar: string;
-  bio?: string;
+  images: {
+    main: string;
+  };
+  breed: string;
 }
 
 interface GiphyGif {
@@ -61,6 +69,7 @@ interface Conversation {
   id: string;
   userId: string;
   petId: string;
+  participants: string[];
   createdAt: Timestamp;
   lastMessageAt: Timestamp;
   status: "active" | "archived";
@@ -105,6 +114,9 @@ export function CommunicationCenter() {
   const [isLoading, setIsLoading] = useState(true);
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [otherUserTyping, setOtherUserTyping] = useState(false);
+  const [userDetails, setUserDetails] = useState<{
+    [key: string]: UserDetails;
+  }>({});
   const [petDetails, setPetDetails] = useState<{ [key: string]: PetDetails }>(
     {}
   );
@@ -114,13 +126,10 @@ export function CommunicationCenter() {
 
   // Refs
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const currentUser = auth.currentUser;
   const typingTimeoutRef = useRef<number>();
 
   // Fetch conversations
   useEffect(() => {
-    if (!currentUser) return;
-
     const conversationsQuery = query(
       collection(db, "conversations"),
       where("status", "==", "active"),
@@ -135,7 +144,11 @@ export function CommunicationCenter() {
           ...doc.data(),
         })) as Conversation[];
         setConversations(fetchedConversations);
-        fetchedConversations.forEach((conv) => fetchPetDetails(conv.petId));
+        // Fetch details for each conversation
+        fetchedConversations.forEach((conv) => {
+          fetchUserDetails(conv.userId);
+          fetchPetDetails(conv.petId);
+        });
         setIsLoading(false);
       },
       (error) => {
@@ -145,7 +158,29 @@ export function CommunicationCenter() {
     );
 
     return () => unsubscribe();
-  }, [currentUser]);
+  }, []);
+
+  // Fetch user details
+  const fetchUserDetails = async (userId: string) => {
+    if (userDetails[userId]) return;
+
+    try {
+      const userDoc = await getDoc(doc(db, "users", userId));
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        setUserDetails((prev) => ({
+          ...prev,
+          [userId]: {
+            displayName: data.displayName,
+            email: data.email,
+            avatar: data.avatar,
+          },
+        }));
+      }
+    } catch (error) {
+      console.error("Error fetching user details:", error);
+    }
+  };
 
   // Fetch pet details
   const fetchPetDetails = async (petId: string) => {
@@ -159,8 +194,8 @@ export function CommunicationCenter() {
           ...prev,
           [petId]: {
             name: data.name,
-            avatar: data.images?.main || "",
-            bio: data.bio,
+            images: data.images,
+            breed: data.breed,
           },
         }));
       }
@@ -171,7 +206,7 @@ export function CommunicationCenter() {
 
   // Subscribe to messages
   useEffect(() => {
-    if (!selectedConversation || !currentUser) return;
+    if (!selectedConversation) return;
 
     const messagesQuery = query(
       collection(db, "messages"),
@@ -191,16 +226,15 @@ export function CommunicationCenter() {
 
         setMessages(newMessages.reverse());
 
-        // Mark messages as read
+        // Mark messages as read if they're from the user
         newMessages.forEach((msg) => {
-          if (msg.senderId !== currentUser.uid && !msg.read) {
+          if (msg.senderId === selectedConversation.userId && !msg.read) {
             updateDoc(doc(db, "messages", msg.id), { read: true }).catch(
               console.error
             );
           }
         });
 
-        // Auto-scroll to bottom on new messages
         if (scrollAreaRef.current) {
           scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
         }
@@ -217,7 +251,7 @@ export function CommunicationCenter() {
         const data = doc.data();
         if (data?.typing) {
           const othersTyping = Object.entries(data.typing).some(
-            ([uid, isTyping]) => uid !== currentUser.uid && isTyping
+            ([uid, isTyping]) => uid === selectedConversation.userId && isTyping
           );
           setOtherUserTyping(othersTyping);
         }
@@ -228,7 +262,7 @@ export function CommunicationCenter() {
       unsubscribe();
       typingUnsubscribe();
     };
-  }, [selectedConversation, currentUser?.uid]);
+  }, [selectedConversation]);
 
   // Message sending
   const sendMessage = async (
@@ -236,29 +270,23 @@ export function CommunicationCenter() {
     type: "text" | "image" | "gif" = "text",
     gifUrl?: string
   ) => {
-    if (!currentUser || !selectedConversation) return;
+    if (!selectedConversation) return;
 
     try {
-      const messageData: any = {
+      const messageData = {
         content,
         conversationId: selectedConversation.id,
-        senderId: currentUser.uid,
+        senderId: selectedConversation.petId,
         createdAt: serverTimestamp(),
         type,
         read: false,
+        ...(gifUrl && { gifUrl }),
       };
-
-      if (type === "gif" && gifUrl) {
-        messageData.gifUrl = gifUrl;
-      }
 
       await addDoc(collection(db, "messages"), messageData);
       await updateConversationTimestamp();
-
-      // Clear typing indicator after sending
       await updateTypingStatus(false);
 
-      // Scroll to bottom
       if (scrollAreaRef.current) {
         scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
       }
@@ -320,7 +348,7 @@ export function CommunicationCenter() {
   // Typing indicator
   const updateTypingStatus = useCallback(
     async (isTyping: boolean) => {
-      if (!selectedConversation || !currentUser) return;
+      if (!selectedConversation) return;
 
       try {
         const conversationRef = doc(
@@ -329,13 +357,13 @@ export function CommunicationCenter() {
           selectedConversation.id
         );
         await updateDoc(conversationRef, {
-          [`typing.${currentUser.uid}`]: isTyping,
+          [`typing.${selectedConversation.petId}`]: isTyping,
         });
       } catch (error) {
         console.error("Error updating typing status:", error);
       }
     },
-    [selectedConversation, currentUser]
+    [selectedConversation]
   );
 
   const handleTextChange = (text: string) => {
@@ -403,29 +431,28 @@ export function CommunicationCenter() {
       debouncedSearch.cancel();
     };
   }, []);
-
   // Message renderer
   const renderMessage = (message: Message) => {
-    const isCurrentUser = message.senderId === currentUser?.uid;
+    const isPetSender = message.senderId === selectedConversation?.petId;
     const messageTime = format(message.createdAt, "HH:mm");
 
-    const avatarName = isCurrentUser
-      ? currentUser?.displayName || "You"
-      : petDetails[selectedConversation?.petId || ""]?.name || "Pet";
+    const avatarName = isPetSender
+      ? petDetails[selectedConversation?.petId]?.name
+      : userDetails[selectedConversation?.userId]?.displayName || "User";
 
-    const avatarUrl = isCurrentUser
-      ? currentUser?.photoURL || ""
-      : petDetails[selectedConversation?.petId || ""]?.avatar || "";
+    const avatarUrl = isPetSender
+      ? petDetails[selectedConversation?.petId]?.images?.main
+      : userDetails[selectedConversation?.userId]?.avatar;
 
     return (
       <div
         key={message.id}
         className={`flex ${
-          isCurrentUser ? "flex-row-reverse" : "flex-row"
+          isPetSender ? "flex-row-reverse" : "flex-row"
         } mb-4 items-end`}
       >
         <Avatar
-          name={avatarName}
+          name={avatarName || ""}
           src={avatarUrl}
           size="32"
           round={true}
@@ -434,7 +461,7 @@ export function CommunicationCenter() {
 
         <div
           className={`max-w-xs lg:max-w-md xl:max-w-lg rounded-lg p-3 ${
-            isCurrentUser
+            isPetSender
               ? "bg-blue-500 text-white rounded-tr-none"
               : "bg-gray-200 text-gray-800 rounded-tl-none"
           }`}
@@ -457,20 +484,20 @@ export function CommunicationCenter() {
 
           <div
             className={`flex items-center mt-1 space-x-1 ${
-              isCurrentUser ? "justify-start" : "justify-end"
+              isPetSender ? "justify-start" : "justify-end"
             }`}
           >
             <span
               className={`text-xs ${
-                isCurrentUser ? "text-blue-100" : "text-gray-500"
+                isPetSender ? "text-blue-100" : "text-gray-500"
               }`}
             >
               {messageTime}
             </span>
-            {isCurrentUser && message.read && (
+            {isPetSender && message.read && (
               <span
                 className={`text-xs ${
-                  isCurrentUser ? "text-blue-100" : "text-gray-500"
+                  isPetSender ? "text-blue-100" : "text-gray-500"
                 }`}
               >
                 • Read
@@ -495,37 +522,44 @@ export function CommunicationCenter() {
     <div className="flex h-screen bg-gray-100">
       {/* Conversation List */}
       <div className="w-1/3 border-r bg-white overflow-auto">
-        {conversations.map((conversation) => (
-          <div
-            key={conversation.id}
-            className={`p-4 cursor-pointer hover:bg-gray-100 ${
-              selectedConversation?.id === conversation.id ? "bg-gray-200" : ""
-            }`}
-            onClick={() => setSelectedConversation(conversation)}
-          >
-            <div className="flex items-center space-x-3">
-              <Avatar
-                name={petDetails[conversation.petId]?.name || "Unknown Pet"}
-                src={petDetails[conversation.petId]?.avatar || ""}
-                size="40"
-                round={true}
-              />
-              <div>
-                <p className="font-semibold">
-                  {petDetails[conversation.petId]?.name || "Unknown Pet"}
-                </p>
-                <p className="text-sm text-gray-500">
-                  {conversation.lastMessageAt
-                    ? format(
-                        conversation.lastMessageAt.toDate(),
-                        "MMM d, HH:mm"
-                      )
-                    : "No messages"}
-                </p>
+        {conversations.map((conversation) => {
+          const user = userDetails[conversation.userId];
+          const pet = petDetails[conversation.petId];
+          return (
+            <div
+              key={conversation.id}
+              className={`p-4 cursor-pointer hover:bg-gray-100 ${
+                selectedConversation?.id === conversation.id
+                  ? "bg-gray-200"
+                  : ""
+              }`}
+              onClick={() => setSelectedConversation(conversation)}
+            >
+              <div className="flex items-center space-x-3">
+                <Avatar
+                  name={user?.displayName || "User"}
+                  src={user?.avatar}
+                  size="40"
+                  round={true}
+                />
+                <div>
+                  <p className="font-semibold">{user?.displayName || "User"}</p>
+                  <p className="text-sm text-gray-500">
+                    <span className="text-xs text-gray-400">
+                      {pet?.name || "Loading..."} •{" "}
+                    </span>
+                    {conversation.lastMessageAt
+                      ? format(
+                          conversation.lastMessageAt.toDate(),
+                          "MMM d, HH:mm"
+                        )
+                      : "No messages"}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Chat Area */}
@@ -534,27 +568,31 @@ export function CommunicationCenter() {
           <>
             {/* Chat Header */}
             <div className="flex-shrink-0 p-4 border-b bg-white shadow-sm">
-              <div className="flex items-center">
-                <Avatar
-                  name={
-                    petDetails[selectedConversation.petId]?.name ||
-                    "Unknown Pet"
-                  }
-                  src={petDetails[selectedConversation.petId]?.avatar || ""}
-                  size="40"
-                  round={true}
-                  className="mr-3"
-                />
-                <div>
-                  <h2 className="text-xl font-bold">
-                    {petDetails[selectedConversation.petId]?.name ||
-                      "Unknown Pet"}
-                  </h2>
-                  {otherUserTyping && (
-                    <p className="text-sm text-gray-500 animate-pulse">
-                      typing...
-                    </p>
-                  )}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <Avatar
+                    name={
+                      userDetails[selectedConversation.userId]?.displayName ||
+                      "User"
+                    }
+                    src={userDetails[selectedConversation.userId]?.avatar}
+                    size="40"
+                    round={true}
+                  />
+                  <div>
+                    <h2 className="text-lg font-bold">
+                      {userDetails[selectedConversation.userId]?.displayName ||
+                        "User"}
+                    </h2>
+                    {otherUserTyping && (
+                      <p className="text-sm text-gray-500 animate-pulse">
+                        typing...
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="text-sm text-gray-500">
+                  {userDetails[selectedConversation.userId]?.email}
                 </div>
               </div>
             </div>
@@ -562,8 +600,8 @@ export function CommunicationCenter() {
             {/* Messages Area */}
             <div className="flex-grow overflow-hidden">
               <div
-                className="h-full overflow-y-auto p-4 space-y-4"
                 ref={scrollAreaRef}
+                className="h-full overflow-y-auto p-4 space-y-4"
               >
                 {messages.map(renderMessage)}
               </div>
@@ -604,7 +642,9 @@ export function CommunicationCenter() {
                   type="text"
                   value={message}
                   onChange={(e) => handleTextChange(e.target.value)}
-                  placeholder="Type a message..."
+                  placeholder={`Message as ${
+                    petDetails[selectedConversation.petId]?.name
+                  }...`}
                   className="flex-grow p-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <button
@@ -641,8 +681,26 @@ export function CommunicationCenter() {
       {isMediaDialogOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg w-full max-w-md">
-            <div className="p-4 border-b">
+            <div className="p-4 border-b flex justify-between items-center">
               <h3 className="text-lg font-semibold">Send Media</h3>
+              <button
+                onClick={() => setIsMediaDialogOpen(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
             </div>
 
             <div className="p-4 space-y-4">
@@ -650,7 +708,7 @@ export function CommunicationCenter() {
               <div>
                 <h4 className="font-medium mb-2">Emoji</h4>
                 <div className="grid grid-cols-8 gap-2">
-                  {["😀", "😃", "😄", "😁", "😅", "😂", "🤣", "😊"].map(
+                  {["😀", "😃", "😄", "😁", "😅", "😂", "🐱", "🐶"].map(
                     (emoji) => (
                       <button
                         key={emoji}
@@ -720,17 +778,6 @@ export function CommunicationCenter() {
                   className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-            </div>
-
-            {/* Dialog Footer */}
-            <div className="p-4 border-t flex justify-end">
-              <button
-                type="button"
-                onClick={() => setIsMediaDialogOpen(false)}
-                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                Cancel
-              </button>
             </div>
           </div>
         </div>
